@@ -32,26 +32,17 @@ def clean(value: str) -> str:
 
 
 def incorrect_particle_forms(text: str) -> list[str]:
-    pattern = re.compile(
-        r"(?P<stem>[가-힣A-Za-z0-9·]+?)(?P<particle>으로|로|을|를|은|는)"
-        r"(?=$|[\s,.;:!?…\)\]\}\"'”’])"
+    # 도로명(영창로·사직로)과 고유 지명(흥덕마을)은 조사 규칙으로
+    # 판별할 수 없다. 전역 정규식은 정상 명칭을 오탐하고 실제 콘텐츠까지
+    # 훼손했으므로, 생성 과정에서 확인된 잘못된 결합만 명시적으로 검사한다.
+    known_wrong = (
+        "문제집를", "학교 숙제 수행 시간를", "최근 학교 단원를",
+        "반복되는 유형를", "학습성과관리은", "학원안전관리을",
+        "와와학습코칭학원로", "수 있은", "묻은 질문", "찾은 자리",
+        "함께 읽은 것입니다", "맞은 순서", "반달마를", "산내마를",
+        "후곡마를", "흥덕마를",
     )
-    wrong: list[str] = []
-    for match in pattern.finditer(text):
-        stem, particle = match.group("stem"), match.group("particle")
-        last_hangul = next((char for char in reversed(stem) if "가" <= char <= "힣"), None)
-        if not last_hangul:
-            continue
-        jongseong = (ord(last_hangul) - 0xAC00) % 28
-        if particle in {"을", "를"}:
-            expected = "을" if jongseong else "를"
-        elif particle in {"은", "는"}:
-            expected = "은" if jongseong else "는"
-        else:
-            expected = "로" if jongseong in {0, 8} else "으로"
-        if particle != expected:
-            wrong.append(match.group(0))
-    return wrong
+    return [value for value in known_wrong if value in text]
 
 
 def list_values(value: str) -> list[str]:

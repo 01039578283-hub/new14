@@ -269,30 +269,189 @@ def compact_meta(title: str, center: dict) -> str:
     return value[:100].rstrip(" ,·")
 
 
-def correct_korean_particles(text: str) -> str:
-    """Correct common topic/object/directional particles from the final Hangul syllable."""
-    particle_pattern = re.compile(
-        r"(?P<stem>[가-힣A-Za-z0-9·]+?)(?P<particle>으로|로|을|를|은|는)"
-        r"(?=$|[\s,.;:!?…\)\]\}\"'”’])"
+def hangul_jongseong(value: str) -> int | None:
+    """Return the final-consonant index for a phrase without rewriting it.
+
+    조사 교정은 문맥 없이 문장 전체에 적용하면 `흥덕마을`의 `을`이나
+    `영창로`의 `로`를 조사로 잘못 인식한다. 이 함수는 새로 넣는 안전한
+    상담 주제에 조사를 붙일 때만 사용한다.
+    """
+    last = next((char for char in reversed(value) if "가" <= char <= "힣"), None)
+    return None if last is None else (ord(last) - 0xAC00) % 28
+
+
+def attach_particle(value: str, particle: str) -> str:
+    pairs = {
+        "을": ("을", "를"), "를": ("을", "를"),
+        "은": ("은", "는"), "는": ("은", "는"),
+        "이": ("이", "가"), "가": ("이", "가"),
+        "과": ("과", "와"), "와": ("과", "와"),
+    }
+    jongseong = hangul_jongseong(value)
+    if particle in {"으로", "로"}:
+        return value + ("로" if jongseong in {0, 8} else "으로")
+    if particle not in pairs or jongseong is None:
+        return value + particle
+    consonant, vowel = pairs[particle]
+    return value + (consonant if jongseong else vowel)
+
+
+def replace_keyword_token(text: str, keyword: str, topic: str) -> str:
+    """Replace one manuscript-only SEO keyword while preserving its particle."""
+    # 원고에는 `온라인수업처럼`, `학원온라인수업를`처럼 키워드가 다른
+    # 음절과 붙어 있는 변형도 있다. 먼저 토큰 자체를 빠짐없이 치환한 뒤,
+    # 새 상담 주제에 바로 붙은 조사만 한정적으로 바로잡는다.
+    text = text.replace(f"학원{keyword}", topic).replace(keyword, topic)
+    for particle in ("으로", "로", "을", "를", "은", "는", "이", "가", "과", "와"):
+        text = text.replace(f"{topic}{particle}", attach_particle(topic, particle))
+    return text
+
+
+def sanitize_unverified_operational_keyword(text: str, seed: str) -> str:
+    """Turn unsourced service-like keywords into verifiable consultation topics.
+
+    원고의 개별화용 키워드에는 `온라인수업`, `방학캠프`, `입시성공사례`
+    같이 센터 자료로 확인되지 않은 운영 표현이 섞여 있다. 서비스 사실로
+    보일 수 있는 단어는 최근 시험지·오답·학교 일정처럼 학부모가 실제
+    자료로 확인할 수 있는 상담 주제로 바꾼다.
+    """
+    unsafe_terms = (
+        "녹화수업", "온라인수업", "방학캠프", "일대일수업", "야간수업",
+        "입시성공사례", "학원자료실", "학습암기",
     )
+    keyword = next((value for value in unsafe_terms if value in text), "")
+    patterns = (
+        r"그리고\s+([가-힣A-Za-z0-9·]+)처럼\s+학부모님이\s+실제로\s+묻는\s+운영\s+요소",
+        r"가정에서\s+확인할\s+([가-힣A-Za-z0-9·]+)과\s+학습\s+습관",
+        r"확인해야\s+([가-힣A-Za-z0-9·]+)\s+운영도",
+        r"([가-힣A-Za-z0-9·]+)이\s+상담\s+키워드로\s+제시된",
+    )
+    if not keyword:
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                keyword = match.group(1)
+                break
+    if not keyword:
+        return text
 
-    def replace(match: re.Match[str]) -> str:
-        stem = match.group("stem")
-        particle = match.group("particle")
-        last_hangul = next((char for char in reversed(stem) if "가" <= char <= "힣"), None)
-        if not last_hangul:
-            return match.group(0)
-        jongseong = (ord(last_hangul) - 0xAC00) % 28
-        if particle in {"을", "를"}:
-            expected = "을" if jongseong else "를"
-        elif particle in {"은", "는"}:
-            expected = "은" if jongseong else "는"
-        else:
-            # ㄹ 받침은 `서울로`, `교실로`처럼 `로`를 사용한다.
-            expected = "로" if jongseong in {0, 8} else "으로"
-        return stem + expected
+    topic = stable_pick(seed, "safe-consultation-topic", [
+        "최근 평가 기록",
+        "오답 재확인 기록",
+        "과제 완료 기준",
+        "학교 일정 점검",
+        "학습 플래너 기록",
+        "과목별 복습 기록",
+    ])
+    text = replace_keyword_token(text, keyword, topic)
+    replacements = {
+        f"{topic}처럼 학부모님이 실제로 묻는 운영 요소": f"{topic}처럼 상담에서 확인할 자료",
+        f"{topic} 운영도 실질적으로 이어집니다": f"{topic}도 실제 학습 계획에 반영할 수 있습니다",
+        f"{topic}이 상담 키워드로 제시된": f"{topic}을 함께 확인하는",
+        f"{topic} 안내를 통해": f"{topic}을 점검해",
+        f"{topic}과 연결해": f"{topic}을 바탕으로",
+        f"상담 시 확인할 {topic} 내용": f"상담 시 확인할 {topic}",
+        f"{topic}까지 함께 알아보는": f"{topic}도 함께 확인하는",
+        f"{topic}을 찾는다면": f"{topic}을 확인한다면",
+        f"{topic}에 대한 안내": f"{topic}에 대한 설명",
+    }
+    for source, target in replacements.items():
+        text = text.replace(source, target)
+    return text
 
-    return particle_pattern.sub(replace, text)
+
+def diversify_common_copy(text: str, locality: str, seed: str) -> str:
+    """Vary common guidance without changing any center or school fact."""
+    common_banks: list[tuple[str, str, list[str]]] = [
+        (
+            "school-list-purpose",
+            "이 목록은 수업 가능 여부를 단정하는 표현이 아니라 상담에서 학생의 실제 학교 자료를 확인하기 위한 참고 정보입니다.",
+            [
+                "학교 목록은 수업 가능 여부를 보장하지 않으며, 상담에서 학생이 가져온 실제 학교 자료를 대조하기 위한 참고 정보입니다.",
+                "표시된 학교명만으로 수업 가능 여부를 판단하지 않고, 상담 때 학생의 시험·교과 자료를 함께 확인합니다.",
+                "이 학교 정보는 상담 준비를 위한 참고 목록입니다. 실제 수업 여부는 학생 자료와 센터의 현재 개설 범위를 함께 확인해야 합니다.",
+                "학교명은 현재 학습 자료를 확인하는 출발점으로만 활용하며, 센터별 수업 가능 여부를 뜻하지 않습니다.",
+                "제공 목록은 학교 자료 확인을 돕기 위한 정보이고, 실제 개설 과목과 수업 가능 여부는 상담에서 별도로 확인합니다.",
+                "목록에 포함된 학교는 상담 참고 대상이며, 학생의 실제 시험 범위와 센터 운영 범위를 확인한 뒤 판단해야 합니다.",
+            ],
+        ),
+        (
+            "school-material-priority",
+            "학교명 반복보다 현재 자료를 어떻게 수업 계획에 반영하는지가 더 중요합니다.",
+            [
+                "학교명을 여러 번 언급하기보다 학생이 가져온 자료를 다음 수업 계획에 어떻게 반영하는지가 중요합니다.",
+                "핵심은 학교명 자체가 아니라 현재 시험 범위와 과제 자료가 과목별 계획으로 이어지는 방식입니다.",
+                "학교 정보보다 실제 자료에서 확인한 단원과 오답을 다음 학습 순서로 바꾸는 과정이 우선입니다.",
+                "학교 이름을 강조하기보다 시험·교과 자료를 읽고 보완 순서를 정하는지를 확인해야 합니다.",
+                "현재 학교 자료가 수업 진도와 복습 일정에 구체적으로 반영되는지를 살펴보는 편이 정확합니다.",
+                "학교별 자료는 이름 나열보다 시험 범위, 과제와 수행평가 일정을 계획에 연결할 때 의미가 있습니다.",
+            ],
+        ),
+        (
+            "read-starting-point",
+            "처음 필요한 단계는 성적표보다 최근 오답과 공부 시간을 함께 읽는 것입니다.",
+            [
+                "첫 단계에서는 성적표만 보기보다 최근 오답과 실제 공부 시간을 함께 살펴야 합니다.",
+                "출발점을 정할 때는 점수보다 최근 틀린 문제와 주간 공부 시간을 나란히 확인하는 편이 좋습니다.",
+                "처음에는 성적 한 줄보다 오답이 생긴 과정과 공부 시간의 사용 방식을 함께 확인합니다.",
+                "현재 상태를 파악하려면 성적표와 함께 최근 오답, 과제 시작과 완료 시간을 살펴야 합니다.",
+                "진단의 시작은 점수 비교가 아니라 최근 오답과 실제 학습 시간을 연결해 보는 과정입니다.",
+                "우선 최근 풀이 기록과 공부 시간을 대조해 어느 과목에서 흐름이 끊기는지 확인해야 합니다.",
+            ],
+        ),
+        (
+            "family-observation",
+            f"{locality} 학부모가 집에서 할 수 있는 일은 문제를 대신 풀어 주는 것이 아니라 자녀가 국어·영어·수학 중 어느 과목에서 시간을 잃는지 관찰하는 것입니다.",
+            [
+                f"{locality} 가정에서는 문제를 대신 해결하기보다 자녀가 국어·영어·수학 중 어느 과목에서 오래 멈추는지 기록해 두는 것이 좋습니다.",
+                f"{locality} 학부모가 확인할 부분은 정답을 알려 주는 일이 아니라 세 과목 중 시작과 완료가 늦어지는 지점을 살피는 것입니다.",
+                f"가정에서는 {locality} 학생의 풀이를 대신하기보다 과목별 소요 시간과 질문을 미룬 장면을 짧게 남겨 주세요.",
+                f"{locality} 학생의 집 공부를 볼 때는 문제를 대신 풀기보다 국어·영어·수학의 멈춘 지점과 이유를 확인하는 편이 좋습니다.",
+                f"학부모는 {locality} 학생이 세 과목 중 어디에서 시간을 많이 쓰는지 관찰하고 상담 때 그 기록을 공유할 수 있습니다.",
+                f"{locality} 가정의 역할은 풀이를 대신하는 것이 아니라 과목별 시작 시각, 완료 여부와 반복 질문을 확인하는 데 있습니다.",
+            ],
+        ),
+        (
+            "elementary-direct-intro",
+            f"{locality} {LEVEL_NAME} 국영수학원을 검색한 학부모가 바로 알고 싶은 답은 분명합니다.",
+            [
+                f"{locality}에서 {LEVEL_NAME} 국어·영어·수학 학습을 알아볼 때 먼저 확인할 기준이 있습니다.",
+                f"{locality} {LEVEL_NAME}의 세 과목 학습을 비교한다면 현재 기초와 공부 습관부터 살펴야 합니다.",
+                f"{locality} 학부모가 {LEVEL_NAME} 국영수 수업을 찾을 때 첫 질문은 과목 수보다 현재 공백이 무엇인지입니다.",
+                f"{locality} {LEVEL_NAME}에게 필요한 국영수 관리는 진도보다 과목별로 막히는 장면을 확인하는 데서 시작합니다.",
+                f"{locality}에서 {LEVEL_NAME} 국영수학원을 선택하기 전에는 학생의 현재 교재와 풀이 과정을 먼저 확인해야 합니다.",
+                f"{locality} {LEVEL_NAME}의 국어·영어·수학 계획은 세 과목을 모두 늘리기 전에 우선순위를 나누는 과정이 필요합니다.",
+            ],
+        ),
+        (
+            "high-weekly-balance",
+            f"{locality} {LEVEL_NAME}에게는 한 과목의 과제량이 다른 과목 복습을 밀어내지 않도록 주간 균형을 조정하는 과정이 필요합니다.",
+            [
+                f"{locality} {LEVEL_NAME}은 한 과목의 과제가 다른 과목 복습 시간을 잠식하지 않도록 주간 분량을 나누어야 합니다.",
+                f"{locality} {LEVEL_NAME}의 계획에서는 집중 과목을 정하되 나머지 과목의 최소 복습 시간을 함께 남겨야 합니다.",
+                f"세 과목 일정이 겹치는 {locality} {LEVEL_NAME}에게는 과제량과 복습 시간을 현실적으로 조정하는 과정이 필요합니다.",
+                f"{locality} {LEVEL_NAME}은 시험 일정에 따라 집중 과목과 유지 과목을 구분해 주간 균형을 맞추는 편이 좋습니다.",
+                f"한 과목에 시간이 몰리는 {locality} {LEVEL_NAME}이라면 다른 과목의 복습이 끊기지 않도록 최소 실행량을 정해야 합니다.",
+                f"{locality} {LEVEL_NAME}의 세 과목 계획은 과제 충돌을 줄이고 각 과목의 재확인 시간을 확보하는 방식이어야 합니다.",
+            ],
+        ),
+        (
+            "action-starting-point",
+            f"{locality} {LEVEL_NAME}의 좋은 출발점은 학생에게 많은 약속을 주는 것이 아니라 오늘부터 바꿀 한두 가지 학습 행동을 정하는 데 있습니다.",
+            [
+                f"{locality} {LEVEL_NAME}의 학습 변화는 거창한 약속보다 이번 주에 실행할 한두 가지 행동을 정하는 데서 시작합니다.",
+                f"{locality} {LEVEL_NAME}에게 필요한 첫 단계는 계획을 크게 잡기보다 바로 확인할 학습 행동을 구체화하는 것입니다.",
+                f"처음부터 많은 목표를 제시하기보다 {locality} {LEVEL_NAME}이 오늘 바꿀 수 있는 공부 행동을 정해야 합니다.",
+                f"{locality} {LEVEL_NAME}의 출발점은 약속의 수가 아니라 다음 수업까지 지킬 한두 가지 기준을 세우는 데 있습니다.",
+                f"실행 가능한 변화는 {locality} {LEVEL_NAME}이 이번 주에 반복할 작은 행동을 정할 때 시작됩니다.",
+                f"{locality} {LEVEL_NAME}의 계획은 많은 목표보다 바로 실천하고 확인할 행동 한두 가지를 먼저 담아야 합니다.",
+            ],
+        ),
+    ]
+    for label, source, choices in common_banks:
+        if source in text:
+            text = text.replace(source, stable_pick(seed, label, choices))
+    return text
 
 
 def polish_korean(text: str, locality: str = "") -> str:
@@ -311,11 +470,25 @@ def polish_korean(text: str, locality: str = "") -> str:
         "방식를": "방식을",
         "내용를": "내용을",
         "과정를": "과정을",
+        "문제집를": "문제집을",
+        "학교 숙제 수행 시간를": "학교 숙제 수행 시간을",
+        "최근 학교 단원를": "최근 학교 단원을",
+        "반복되는 유형를": "반복되는 유형을",
+        "학습성과관리은": "학습성과관리는",
+        "학원안전관리을": "학원안전관리를",
+        "와와학습코칭학원로": "와와학습코칭학원으로",
         "자료와 자료": "자료",
         "자료를 자료": "자료",
         "학원운영자": "학원 운영자",
         "고1식 공부법에서 고등 내신형 공부로 바꿔야": "중학교 때의 공부 습관을 고등 내신에 맞게 조정해야",
         "중등식 문제량": "현재 수준보다 많은 문제량",
+        "수 있은": "수 있는",
+        "묻은 질문": "묻는 질문",
+        "찾은 자리": "찾는 자리",
+        "함께 읽은 것입니다": "함께 읽는 것입니다",
+        "맞은 순서": "맞는 순서",
+        "찾은 가정": "찾는 가정",
+        "찾은 학부모": "찾는 학부모",
     }
     for source, target in replacements.items():
         text = text.replace(source, target)
@@ -336,7 +509,9 @@ def polish_korean(text: str, locality: str = "") -> str:
     while previous != text:
         previous = text
         text = repeated_pattern.sub(r"\g<word>", text)
-    return correct_korean_particles(text)
+    # 일반 단어·지역명·도로명까지 훼손하는 전역 조사 정규식은 사용하지
+    # 않는다. 위의 확인된 오류 표현만 보수적으로 교정한다.
+    return text
 
 
 def supported_grades(center: dict) -> set[str]:
@@ -515,7 +690,9 @@ def sanitize_grade_claims(text: str, center: dict) -> str:
 
 
 def personalize_body(body: str, title: str, locality: str, center: dict, seed: str) -> tuple[str, list[tuple[str, list[str]]]]:
+    body = sanitize_unverified_operational_keyword(body, seed)
     body = polish_korean(body, locality)
+    body = body.replace(f"{locality}에서 {locality} ", f"{locality}에서 ")
     body = sanitize_grade_claims(body, center)
     body = body.replace("학생이며,", stable_pick(seed, "student-link", ["학생이고,", "학생으로,", "학생입니다. 또한 "]))
     body = body.replace(
@@ -550,6 +727,7 @@ def personalize_body(body: str, title: str, locality: str, center: dict, seed: s
         ]),
     )
     body = reduce_title_repetition(body, title, locality, seed, keep=4)
+    body = diversify_common_copy(body, locality, seed)
     # Grade replacement can expose adjacent template fragments, so run the
     # conservative Korean cleanup once more before turning the source into HTML.
     body = polish_korean(body, locality)
@@ -557,20 +735,55 @@ def personalize_body(body: str, title: str, locality: str, center: dict, seed: s
     return intro, sections
 
 
-def school_section(center: dict, locality: str) -> tuple[str, list[str]]:
+def school_section(center: dict, locality: str, seed: str) -> tuple[str, list[str]]:
     schools = center["schools"]
     material_label = SCHOOL_MATERIALS if SCHOOL_MATERIALS.endswith("자료") else f"{SCHOOL_MATERIALS} 자료"
-    heading = f"{locality} {SCHOOL_NAME} 자료를 수업 계획에 반영하는 방법"
+    heading = stable_pick(seed, "school-heading", [
+        f"{locality} {SCHOOL_NAME} 자료를 수업 계획에 반영하는 방법",
+        f"{locality} 학생의 학교 자료를 확인하는 순서",
+        f"{locality} {LEVEL_NAME} 학교 자료와 과목별 계획 연결",
+        f"학교 자료로 살펴보는 {locality} {LEVEL_NAME} 학습 우선순위",
+        f"{locality} 학교 일정과 현재 교재를 함께 확인하기",
+        f"{locality} {SCHOOL_NAME} 참고 자료를 상담에 활용하는 기준",
+    ])
     if schools:
         names = "·".join(schools)
         paragraphs = [
-            f"제공된 {SCHOOL_NAME} 참고 목록은 {names}입니다. 이 목록은 수업 가능 여부를 단정하는 표현이 아니라 상담에서 학생의 실제 학교 자료를 확인하기 위한 참고 정보입니다.",
-            f"{locality} {LEVEL_NAME}은 {material_label}를 가져와 국어 읽기와 문법 범위, 영어 어휘와 문장 적용, 수학 단원과 풀이 과정을 구분하는 것이 좋습니다. 학교명 반복보다 현재 자료를 어떻게 수업 계획에 반영하는지가 더 중요합니다.",
+            stable_pick(seed, "school-list", [
+                f"제공된 {SCHOOL_NAME} 참고 목록은 {names}입니다. 이 목록은 수업 가능 여부를 보장하지 않으며, 상담에서 학생이 가져온 실제 학교 자료를 대조하기 위한 정보입니다.",
+                f"{locality} 페이지의 {SCHOOL_NAME} 참고 정보에는 {names}이 포함됩니다. 학교명만으로 수업 가능 여부를 판단하지 않고 센터의 현재 개설 범위를 함께 확인해야 합니다.",
+                f"상담 준비를 위해 제공된 {SCHOOL_NAME} 목록은 {names}입니다. 이는 수업 가능 학교를 단정하는 자료가 아니라 학생의 실제 범위와 과제를 확인하기 위한 참고 정보입니다.",
+                f"센터 자료에서 확인한 {SCHOOL_NAME} 참고 목록은 {names}입니다. 실제 수업 여부는 학생 자료와 센터별 과목·학년 운영 범위를 확인한 뒤 판단합니다.",
+                f"{names}은 제공 자료에 포함된 {locality} {SCHOOL_NAME} 참고 목록입니다. 목록 포함 여부와 실제 수업 가능 여부는 같지 않으므로 상담에서 별도로 확인합니다.",
+                f"제공 자료에는 {names}이 {SCHOOL_NAME} 참고 정보로 정리되어 있습니다. 학교 이름은 상담의 출발점으로만 사용하고 실제 시험·교과 자료를 함께 확인합니다.",
+            ]),
+            stable_pick(seed, "school-material", [
+                f"{locality} {LEVEL_NAME}은 {material_label}를 준비해 국어 읽기·문법, 영어 어휘·문장 적용, 수학 단원·풀이 과정을 구분하는 것이 좋습니다. 확인한 내용을 다음 수업과 복습 계획에 어떻게 반영하는지 살펴보세요.",
+                f"상담에서는 {material_label}를 과목별로 나누어 현재 범위와 반복 오답을 확인합니다. {locality} 학생에게 필요한 것은 학교명 반복보다 자료에서 찾은 문제를 다음 계획으로 바꾸는 과정입니다.",
+                f"{locality} 학생이 사용하는 {material_label}를 가져오면 국어·영어·수학의 현재 단원과 준비 일정을 구체적으로 확인할 수 있습니다. 자료가 수업 진도와 재확인 날짜에 반영되는지도 물어보세요.",
+                f"학교 자료는 이름 나열보다 활용 방식이 중요합니다. {locality} {LEVEL_NAME}의 {material_label}에서 과목별 범위와 어려운 문제를 표시해 상담 계획과 대조하는 편이 좋습니다.",
+                f"{material_label}를 준비한 뒤 국어의 읽기 근거, 영어의 문장 적용과 수학의 풀이 과정을 따로 확인하세요. {locality} 상담에서는 이 기록이 과목별 우선순위로 이어지는지가 핵심입니다.",
+                f"{locality} {LEVEL_NAME}의 현재 자료를 국어·영어·수학으로 분류하면 시험·교과 범위와 복습할 단원을 더 명확히 볼 수 있습니다. 학교 일정이 주간 과제에 반영되는지도 함께 확인합니다.",
+            ]),
         ]
     else:
         paragraphs = [
-            f"{locality} 페이지에 제공된 {SCHOOL_NAME} 목록은 없습니다. 확인되지 않은 학교명을 임의로 추가하지 않으며, 상담 시 학생이 실제로 사용하는 {material_label}를 기준으로 확인해야 합니다.",
-            f"{locality} 학생의 학교 자료를 준비할 때는 국어 읽기와 문법 범위, 영어 어휘와 문장 적용, 수학 단원과 풀이 과정을 과목별로 나누면 현재 우선순위를 더 분명하게 정리할 수 있습니다.",
+            stable_pick(seed, "school-none", [
+                f"{locality} 페이지에 제공된 {SCHOOL_NAME} 목록은 없습니다. 확인되지 않은 학교명을 추가하지 않고 상담에서 학생이 실제 사용하는 {material_label}를 기준으로 확인합니다.",
+                f"제공 자료에는 {locality} {SCHOOL_NAME} 목록이 따로 정리되어 있지 않습니다. 학생의 실제 {material_label}를 준비해 현재 범위와 과제 일정을 확인하는 것이 정확합니다.",
+                f"{locality}의 확인된 {SCHOOL_NAME} 참고 목록이 없어 학교명을 임의로 제시하지 않습니다. 상담 시 학생이 사용하는 {material_label}와 센터 운영 범위를 직접 대조하세요.",
+                f"학교 정보가 제공되지 않은 {locality} 페이지입니다. 특정 학교를 추정하지 않고 학생의 실제 {material_label}를 바탕으로 상담 질문을 준비합니다.",
+                f"{locality} {SCHOOL_NAME} 목록은 제공 자료에서 확인되지 않았습니다. 실제 학교 자료와 희망 센터의 과목·학년 운영 여부를 함께 확인해야 합니다.",
+                f"확인되지 않은 학교명을 넣지 않기 위해 {locality} 페이지에는 학교 목록을 표시하지 않습니다. 학생이 가져온 {material_label}를 기준으로 상담합니다.",
+            ]),
+            stable_pick(seed, "school-none-material", [
+                f"{locality} 학생의 자료를 국어 읽기·문법, 영어 어휘·문장 적용, 수학 단원·풀이 과정으로 나누면 현재 우선순위를 더 분명하게 정리할 수 있습니다.",
+                f"학교 목록이 없어도 현재 교재와 과제, 평가 자료를 과목별로 준비하면 {locality} 학생의 보완 순서를 구체적으로 확인할 수 있습니다.",
+                f"{material_label}에서 어려웠던 부분을 표시한 뒤 국어·영어·수학의 원인을 나누어 질문하면 상담 내용이 더 분명해집니다.",
+                f"{locality} 상담 전에는 학생이 실제 사용하는 자료의 범위와 오답을 과목별로 정리해 센터의 가능 학년과 함께 확인하세요.",
+                f"학교명 대신 현재 자료를 기준으로 읽기, 문장 적용과 풀이 과정의 막힌 지점을 나누면 현실적인 주간 계획을 세울 수 있습니다.",
+                f"학생이 가져온 {material_label}를 과목별로 살펴보고 다음 수업에서 확인할 단원과 재풀이 시점을 정하는 방식이 정확합니다.",
+            ]),
         ]
     return heading, paragraphs
 
@@ -618,7 +831,14 @@ def build_faq(title: str, locality: str, center: dict, student_type: str, seed: 
             f"제공된 {locality} {SCHOOL_NAME} 목록은 수업 가능 학교를 뜻하나요?",
             f"{locality} {LEVEL_NAME}은 상담 때 어떤 학교 자료를 준비해야 하나요?",
         ])
-        a3 = f"제공된 {SCHOOL_NAME} 참고 목록에는 {shown} 등이 포함됩니다. 이는 수업 가능 여부를 보장하는 목록이 아니며, 실제 {material_label}와 센터별 개설 과목을 상담에서 함께 확인해야 합니다."
+        a3 = stable_pick(seed, "a3-school", [
+            f"제공된 {SCHOOL_NAME} 참고 목록에는 {shown} 등이 포함됩니다. 이는 수업 가능 여부를 보장하는 목록이 아니며, 실제 {material_label}와 센터별 개설 과목을 상담에서 함께 확인해야 합니다.",
+            f"{shown} 등은 제공 자료의 {SCHOOL_NAME} 참고 목록입니다. 학생이 가져온 {material_label}를 대조하고 희망 센터의 과목·학년 운영 여부를 별도로 확인하세요.",
+            f"학교명은 상담 준비를 위한 참고 정보입니다. {shown} 등과 관련한 실제 수업 여부는 학생의 {material_label}, 센터의 현재 개설 범위와 함께 확인해야 합니다.",
+            f"제공 목록에서 {shown} 등을 확인할 수 있지만 모든 학교의 수업 가능 여부를 뜻하지는 않습니다. 실제 범위와 과제 자료를 준비해 상담에서 확인하는 편이 정확합니다.",
+            f"{locality} 페이지에는 {shown} 등이 {SCHOOL_NAME} 참고 정보로 표시됩니다. 학교 목록보다 학생의 현재 {material_label}와 센터 운영 범위를 대조하는 과정이 우선입니다.",
+            f"{shown} 등은 확인된 참고 학교명이며 수업 가능 학교를 단정하지 않습니다. 학생의 실제 자료와 센터별 개설 과목을 함께 놓고 상담하세요.",
+        ])
     else:
         q3 = stable_pick(seed, "q3-none", [
             f"{locality} {SCHOOL_NAME} 목록이 없는 경우 상담은 어떻게 준비하나요?",
@@ -626,7 +846,14 @@ def build_faq(title: str, locality: str, center: dict, student_type: str, seed: 
             f"제공된 {locality} {SCHOOL_NAME} 정보가 없을 때 무엇을 확인해야 하나요?",
             f"{locality} 학생의 학교 자료는 상담 때 직접 가져가야 하나요?",
         ])
-        a3 = f"{locality}에 제공된 {SCHOOL_NAME} 목록이 없어 임의로 학교명을 추가하지 않았습니다. 학생이 실제 사용하는 {material_label}를 준비하고 희망 센터의 과목·학년 운영 범위를 직접 확인하는 것이 정확합니다."
+        a3 = stable_pick(seed, "a3-none", [
+            f"{locality}에 제공된 {SCHOOL_NAME} 목록이 없어 임의로 학교명을 추가하지 않았습니다. 학생이 실제 사용하는 {material_label}를 준비하고 희망 센터의 과목·학년 운영 범위를 직접 확인하는 것이 정확합니다.",
+            f"제공 자료에서 {locality} {SCHOOL_NAME} 목록을 확인할 수 없어 특정 학교를 추정하지 않습니다. 현재 {material_label}와 센터의 가능 학년을 상담에서 함께 확인하세요.",
+            f"학교명이 표시되지 않아도 상담은 가능합니다. 학생이 사용하는 {material_label}를 가져와 현재 범위와 오답을 설명하고 센터의 실제 개설 과목을 확인하면 됩니다.",
+            f"{locality}의 확인된 학교 목록이 없으므로 임의 정보를 넣지 않았습니다. 실제 교재·학교 자료와 희망 센터의 과목 운영 범위를 직접 대조하는 방식이 정확합니다.",
+            f"이 페이지에는 제공된 {SCHOOL_NAME} 정보가 없습니다. 학생의 {material_label}를 준비해 과목별 현재 진도와 센터 수업 가능 여부를 상담에서 확인하세요.",
+            f"확인되지 않은 학교명을 추가하는 대신 학생이 실제 사용하는 {material_label}를 기준으로 안내합니다. 센터별 과목과 학년 운영은 등록 전에 다시 확인해야 합니다.",
+        ])
     q4 = stable_pick(seed, "q4", [
         f"{locality} 상담 전에 센터 위치와 교습비는 어디에서 확인하나요?",
         f"{locality} 센터 방문 전에 확인할 운영 정보는 무엇인가요?",
@@ -807,7 +1034,7 @@ def render_page(record: dict, previous_record: dict, next_record: dict) -> str:
     rep_name = record["rep_name"]
     student_type = verified_student_type(extract_student_type(sections["본문"], locality), center, slug)
     intro, body_sections = personalize_body(sections["본문"], title, locality, center, slug)
-    replacement = school_section(center, locality)
+    replacement = school_section(center, locality, slug)
     normalized_sections: list[tuple[str, list[str]]] = []
     school_section_added = False
     for heading, paragraphs in body_sections:

@@ -133,7 +133,6 @@ def stable_entity(group: list[Page], key: str) -> dict:
     sample = group[0].org
     token = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
     stable_id = f"{BASE_URL}/#center-{token}"
-    chosen = min(group, key=lambda page: str(page.path))
     areas = natural_unique([page.locality for page in group])
     regions = Counter(page.region for page in group if page.region)
     districts = Counter(page.district for page in group if page.district)
@@ -173,7 +172,11 @@ def stable_entity(group: list[Page], key: str) -> dict:
         "@type": ["EducationalOrganization", "LocalBusiness"],
         "@id": stable_id,
         "name": sample["name"],
-        "url": absolute_url(str(chosen.webpage["url"])),
+        # A physical center can serve several localities and all three course
+        # categories. Pointing the shared entity at whichever high-school page
+        # sorts first made middle/elementary pages cite an unrelated canonical
+        # URL. Keep the entity neutral until a dedicated center URL exists.
+        "url": f"{BASE_URL}/",
         "telephone": PHONE,
         "address": address,
         "areaServed": areas,
@@ -200,16 +203,46 @@ def verified_answer(page: Page, entity: dict) -> str:
     address = entity.get("address", {}).get("streetAddress", "")
     grade_text = ", ".join(f"{subject} {grades}" for subject, grades in page.grades)
     fee = bool(entity.get("makesOffer"))
-    fee_text = (
-        "교습비 자료는 페이지의 센터별 교습비 확인 버튼에서 바로 확인할 수 있습니다."
-        if fee else
-        "제공된 교습비 링크가 없어 비용은 센터 상담에서 확인해야 합니다."
-    )
-    return (
-        f"제공 자료 기준 센터 주소는 {address}입니다. "
-        f"수업 가능 학년은 {grade_text}로 정리되어 있습니다. {fee_text} "
-        "실제 개설 과목·시간표·보강·차량·주차 운영은 변경되거나 제공 자료에 없을 수 있으므로 등록 전에 센터에서 다시 확인하세요."
-    )
+    seed = page.path.relative_to(ROOT).as_posix()
+
+    def pick(label: str, choices: list[str]) -> str:
+        digest = hashlib.sha256(f"{seed}|{label}".encode("utf-8")).hexdigest()
+        return choices[int(digest[:10], 16) % len(choices)]
+
+    address_text = pick("verified-address", [
+        f"제공된 센터 주소는 {address}입니다.",
+        f"센터 자료에서 확인한 주소는 {address}입니다.",
+        f"방문 전 확인할 제공 주소는 {address}입니다.",
+        f"{page.locality} 상담 페이지의 주소 자료에 기재된 위치는 {address}입니다.",
+        f"제공 자료상 해당 센터 위치는 {address}입니다.",
+        f"주소 자료에는 센터가 {address}에 있는 것으로 기재되어 있습니다.",
+    ])
+    grade_sentence = pick("verified-grades", [
+        f"과목별 가능 학년은 {grade_text}입니다.",
+        f"제공된 가능 학년은 {grade_text}로 확인됩니다.",
+        f"학년 정보는 {grade_text}로 구분되어 있습니다.",
+        f"센터 자료의 과목별 학년 표기는 {grade_text}입니다.",
+        f"현재 페이지에서 확인할 수 있는 학년 범위는 {grade_text}입니다.",
+        f"국어·영어·수학의 제공 학년 정보는 각각 {grade_text}입니다.",
+    ])
+    fee_text = pick("verified-fee", [
+        "교습비 자료는 페이지의 센터별 교습비 확인 버튼에서 볼 수 있습니다.",
+        "페이지에 연결된 센터별 교습비 자료도 함께 확인할 수 있습니다.",
+        "비용 자료는 센터별 교습비 확인 버튼으로 연결됩니다.",
+    ]) if fee else pick("verified-no-fee", [
+        "제공된 교습비 링크가 없어 비용은 센터 상담에서 확인해야 합니다.",
+        "교습비 자료가 연결되지 않아 실제 비용은 센터에 직접 확인해야 합니다.",
+        "비용 정보는 제공 자료에 없어 상담 과정에서 별도로 확인합니다.",
+    ])
+    caution = pick("verified-caution", [
+        "실제 개설 과목·시간표·보강·차량·주차는 변경되거나 제공 자료에 없을 수 있으므로 등록 전에 센터에서 다시 확인하세요.",
+        "시간표와 보강, 차량·주차 운영은 제공 범위 밖이거나 달라질 수 있어 방문 전에 센터에 확인해야 합니다.",
+        "과목 개설과 수업 시각, 보강·통학 관련 운영은 바뀔 수 있으므로 최종 등록 전에 직접 확인하세요.",
+        "제공 학년 정보와 별개로 실제 개설 반, 시간표와 보강 방식은 센터 상담에서 다시 확인하는 것이 정확합니다.",
+        "차량·주차와 구체적인 수업 시간은 페이지에서 단정하지 않으며 센터의 현재 안내를 확인해야 합니다.",
+        "운영 조건은 시점에 따라 달라질 수 있으므로 과목·학년·시간표를 등록 전에 한 번 더 확인하세요.",
+    ])
+    return " ".join((address_text, grade_sentence, fee_text, caution))
 
 
 def update_visible_facts(text: str, page: Page, entity: dict) -> str:
