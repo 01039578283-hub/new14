@@ -1,0 +1,7 @@
+.vercel
+.env*
+__pycache__/
+*.py[cod]
+scripts/_*.json
+scripts/_*.png
+_direct-file-mobile.png

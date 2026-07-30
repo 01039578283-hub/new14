@@ -1,0 +1,4 @@
+assets/generated/*.png
+scripts/_*.json
+scripts/_*.png
+_direct-file-mobile.png
