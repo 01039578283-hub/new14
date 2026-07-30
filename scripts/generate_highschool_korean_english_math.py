@@ -16,15 +16,21 @@ from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 COMMON = ROOT.parent / "참고자료" / "공통자료"
-USED_MANUSCRIPTS = COMMON.parent / "사용한 원고" / "새 홈페이지14 추가 원고"
+USED_MANUSCRIPTS = COMMON.parent / "사용한 원고" / "국영수학원.com 추가 원고"
 PROFILE = sys.argv[1].lower() if len(sys.argv) > 1 else "high"
 PROFILES = {
     "high": {
-        "source": Path.home() / "Desktop" / "새로 만들 원고" / "고등학생 국영수학원.zip",
+        "source": USED_MANUSCRIPTS / "고등학생 국영수학원.zip",
         "category": "고등학생 국영수학원", "slug": "고등학생국영수학원",
         "level": "고등학생", "course": "고등", "grade_prefix": "고", "school": "고등학교", "school_column": "타깃학교\n(고)",
         "meta_focus": "고등 내신 자료", "english": "High school", "rep_prefix": "hs-kem",
         "school_materials": "시험 범위표·학교 프린트·수행평가 일정",
+        "hub_intro": "고등 과정은 세 과목의 분량을 똑같이 늘리기보다 학교 내신 범위, 모의고사 오답과 수행평가 일정을 함께 놓고 우선순위를 정해야 합니다. 지역별 페이지에서 실제 센터 정보와 학교 참고 자료, 과목별 가능 학년을 확인할 수 있습니다.",
+        "hub_focus": "내신·모의고사",
+        "hub_process": "시험 뒤 재설계",
+        "hub_cta": "고등 과정은 시험 결과를 다음 학습 계획으로 바꾸는 절차부터 확인하세요",
+        "hub_cta_body": "최근 시험지와 오답 기록, 학교 시험 일정을 준비하면 국어·영어·수학의 보완 순서와 주간 시간 배분을 구체적으로 비교할 수 있습니다.",
+        "root_card": "학교 내신 범위와 모의고사 오답, 수행평가 일정을 함께 살펴 세 과목의 우선순위를 정합니다.",
     },
     "middle": {
         "source": USED_MANUSCRIPTS / "중학생 국영수학원.zip",
@@ -32,6 +38,12 @@ PROFILES = {
         "level": "중학생", "course": "중등", "grade_prefix": "중", "school": "중학교", "school_column": "타깃학교\n(중)",
         "meta_focus": "중등 내신 자료", "english": "Middle school", "rep_prefix": "ms-kem",
         "school_materials": "시험 범위표·학교 프린트·수행평가 일정",
+        "hub_intro": "중등 과정은 교과 개념의 빈틈과 학교 시험 준비를 구분하고, 과제 수행과 오답 복습이 스스로 이어지는지를 살펴야 합니다. 지역별 센터의 실제 운영 학년과 학교 참고 자료를 확인한 뒤 학생에게 맞는 관리 흐름을 비교하세요.",
+        "hub_focus": "개념·내신 연결",
+        "hub_process": "주간 실행 점검",
+        "hub_cta": "중등 과정은 개념 이해와 학교 시험 준비가 한 주 안에서 연결되는지 확인하세요",
+        "hub_cta_body": "최근 교재와 시험지, 완료하지 못한 과제를 준비하면 과목별 개념 빈틈과 복습 순서를 나누고 실행 가능한 주간 계획을 비교할 수 있습니다.",
+        "root_card": "교과 개념의 빈틈, 학교 시험 준비와 과제 실행을 구분해 중등 학습의 주간 흐름을 확인합니다.",
     },
     "elementary": {
         "source": USED_MANUSCRIPTS / "초등학생 국영수학원.zip",
@@ -39,6 +51,12 @@ PROFILES = {
         "level": "초등학생", "course": "초등", "grade_prefix": "초", "school": "초등학교", "school_column": "타깃학교\n(초)",
         "meta_focus": "교과 진도와 기초 학습 자료", "english": "Elementary school", "rep_prefix": "es-kem",
         "school_materials": "교과 진도·알림장·단원평가 자료",
+        "hub_intro": "초등 과정은 진도를 앞당기기보다 읽기 이해, 어휘 활용과 계산 과정을 확인하고 스스로 공부를 시작하는 습관을 만드는 것이 우선입니다. 지역별 페이지에서 실제 센터 정보와 교과 자료, 과목별 가능 학년을 확인하세요.",
+        "hub_focus": "기초·교과 이해",
+        "hub_process": "공부 습관 형성",
+        "hub_cta": "초등 과정은 진도보다 기초 이해와 스스로 시작하는 공부 습관을 먼저 확인하세요",
+        "hub_cta_body": "현재 교재와 알림장, 단원평가 자료를 준비하면 읽기·어휘·계산 과정에서 막히는 지점과 가정에서 확인할 짧은 학습 기록을 구체적으로 비교할 수 있습니다.",
+        "root_card": "읽기 이해와 어휘, 계산 과정과 학습 시작 습관을 중심으로 초등 교과 기초를 점검합니다.",
     },
 }
 if PROFILE not in PROFILES:
@@ -64,6 +82,11 @@ META_FOCUS = CONFIG["meta_focus"]
 ENGLISH_LEVEL = CONFIG["english"]
 REP_PREFIX = CONFIG["rep_prefix"]
 SCHOOL_MATERIALS = CONFIG["school_materials"]
+HUB_INTRO = CONFIG["hub_intro"]
+HUB_FOCUS = CONFIG["hub_focus"]
+HUB_PROCESS = CONFIG["hub_process"]
+HUB_CTA = CONFIG["hub_cta"]
+HUB_CTA_BODY = CONFIG["hub_cta_body"]
 SITE_NAME = "와와학습코칭센터"
 PHONE = "010-6839-8283"
 DATE = "2026-07-30"
@@ -195,6 +218,16 @@ def load_manuscripts() -> list[dict[str, str]]:
 
 def choose_representatives(count: int) -> list[str]:
     REP_TARGET.mkdir(parents=True, exist_ok=True)
+    existing: list[str] = []
+    for index in range(1, count + 1):
+        matches = sorted(REP_TARGET.glob(f"{REP_PREFIX}-{index:03d}.*"))
+        if len(matches) != 1:
+            existing = []
+            break
+        existing.append(matches[0].name)
+    if len(existing) == count:
+        return existing
+
     unique: list[Path] = []
     seen: set[str] = set()
     for path in sorted(REP_SOURCE.iterdir(), key=lambda item: item.name):
@@ -213,7 +246,10 @@ def choose_representatives(count: int) -> list[str]:
     for index, source in enumerate(unique[:count], 1):
         name = f"{REP_PREFIX}-{index:03d}{source.suffix.lower()}"
         target = REP_TARGET / name
-        if not target.exists() or hashlib.sha256(target.read_bytes()).digest() != hashlib.sha256(source.read_bytes()).digest():
+        # Existing representative assignments are stable publication assets.
+        # Regenerating page copy must not silently reshuffle/replace them when
+        # the reference folder changes later.
+        if not target.exists():
             shutil.copy2(source, target)
         result.append(name)
     return result
@@ -233,6 +269,32 @@ def compact_meta(title: str, center: dict) -> str:
     return value[:100].rstrip(" ,·")
 
 
+def correct_korean_particles(text: str) -> str:
+    """Correct common topic/object/directional particles from the final Hangul syllable."""
+    particle_pattern = re.compile(
+        r"(?P<stem>[가-힣A-Za-z0-9·]+?)(?P<particle>으로|로|을|를|은|는)"
+        r"(?=$|[\s,.;:!?…\)\]\}\"'”’])"
+    )
+
+    def replace(match: re.Match[str]) -> str:
+        stem = match.group("stem")
+        particle = match.group("particle")
+        last_hangul = next((char for char in reversed(stem) if "가" <= char <= "힣"), None)
+        if not last_hangul:
+            return match.group(0)
+        jongseong = (ord(last_hangul) - 0xAC00) % 28
+        if particle in {"을", "를"}:
+            expected = "을" if jongseong else "를"
+        elif particle in {"은", "는"}:
+            expected = "은" if jongseong else "는"
+        else:
+            # ㄹ 받침은 `서울로`, `교실로`처럼 `로`를 사용한다.
+            expected = "로" if jongseong in {0, 8} else "으로"
+        return stem + expected
+
+    return particle_pattern.sub(replace, text)
+
+
 def polish_korean(text: str, locality: str = "") -> str:
     replacements = {
         "학원와": "학원과",
@@ -246,6 +308,14 @@ def polish_korean(text: str, locality: str = "") -> str:
         "학원교통": "통학 여건",
         "학습동기관리": "학습 동기 관리",
         "국영수 학습 안내문": "국어·영어·수학 학습 계획",
+        "방식를": "방식을",
+        "내용를": "내용을",
+        "과정를": "과정을",
+        "자료와 자료": "자료",
+        "자료를 자료": "자료",
+        "학원운영자": "학원 운영자",
+        "고1식 공부법에서 고등 내신형 공부로 바꿔야": "중학교 때의 공부 습관을 고등 내신에 맞게 조정해야",
+        "중등식 문제량": "현재 수준보다 많은 문제량",
     }
     for source, target in replacements.items():
         text = text.replace(source, target)
@@ -254,7 +324,114 @@ def polish_korean(text: str, locality: str = "") -> str:
             f"{locality} 국어·영어·수학 학습 계획 상담 전 준비할 질문",
             f"{locality} 국어·영어·수학 상담 전 준비할 질문",
         )
-    return re.sub(r"(\d+)층로", r"\1층으로", text)
+    text = re.sub(r"(\d+)층로", r"\1층으로", text)
+    # 원고 생성 과정에서 같은 명사가 연달아 붙은 표현을 조사까지 보존해
+    # 한 번만 남긴다. 예: `자료 자료를` -> `자료를`, `상담 상담에서는` -> `상담에서는`.
+    repeated_terms = (
+        "자료|상담|시기|기준|운영|계획|학습|학생|수업|방법|내용|과제|관리|확인|"
+        "진단|과정|습관|시험|복습|오답|학교|학원|과목|설명|기록"
+    )
+    repeated_pattern = re.compile(rf"(?P<word>{repeated_terms})\s+(?P=word)")
+    previous = None
+    while previous != text:
+        previous = text
+        text = repeated_pattern.sub(r"\g<word>", text)
+    return correct_korean_particles(text)
+
+
+def supported_grades(center: dict) -> set[str]:
+    """Return grades verified for every advertised subject on a combined page."""
+    subject_sets = [
+        set(center["korean_grades"]),
+        set(center["english_grades"]),
+        set(center["math_grades"]),
+    ]
+    non_empty = [values for values in subject_sets if values]
+    return set.intersection(*non_empty) if non_empty else set()
+
+
+def verified_student_type(student_type: str, center: dict, seed: str) -> str:
+    """Keep source individuality while removing grade claims not supported by center data."""
+    value = polish_korean(student_type, center["locality"])
+    mentioned = set(re.findall(rf"{re.escape(GRADE_PREFIX)}[1-6]", value))
+    low_grade_claim = PROFILE == "elementary" and "저학년" in value
+    permitted = supported_grades(center)
+    unsupported = bool(mentioned - permitted)
+    if low_grade_claim and not ({"초1", "초2"} & permitted):
+        unsupported = True
+    if not value or unsupported:
+        alternatives = {
+            "high": [
+                "내신 범위와 모의고사 오답을 한 계획 안에 배치하기 어려운 고등학생",
+                "과목별 시험 일정은 알고 있지만 복습 우선순위를 정하기 어려운 고등학생",
+                "한 과목의 과제량 때문에 다른 과목의 오답 정리가 자주 밀리는 고등학생",
+                "최근 시험 결과를 다음 주 학습 계획으로 바꾸는 과정이 필요한 고등학생",
+                "국어·영어·수학의 공부 시간은 많지만 과목별 완료 기준이 불분명한 고등학생",
+                "학교 자료와 현재 교재의 진도를 함께 관리하기 어려운 고등학생",
+            ],
+            "middle": [
+                "교과 개념은 배웠지만 학교 시험 문제에 적용하는 과정이 불안정한 중학생",
+                "과제는 시작해도 오답 복습과 재확인 날짜를 스스로 정하기 어려운 중학생",
+                "세 과목의 시험 준비가 겹치면 우선순위를 정하지 못하는 중학생",
+                "수업에서 이해한 내용을 혼자 다시 설명하고 적용하는 연습이 필요한 중학생",
+                "학교 일정과 학원 과제를 한 주 계획 안에 배치하기 어려운 중학생",
+                "국어·영어·수학마다 막히는 원인이 다른데 같은 방식으로 공부하는 중학생",
+            ],
+            "elementary": [
+                "읽기 이해와 어휘, 계산 과정의 기초를 과목별로 점검할 필요가 있는 초등학생",
+                "숙제를 시작하는 시각과 끝내는 기준을 스스로 정하기 어려운 초등학생",
+                "배운 내용을 말로 설명하고 틀린 문제를 다시 푸는 습관이 필요한 초등학생",
+                "교과 진도는 따라가지만 국어·영어·수학의 기초 과정이 고르지 않은 초등학생",
+                "알림장과 교재를 보고 그날 공부할 순서를 정하는 연습이 필요한 초등학생",
+                "정답을 맞히는 것보다 풀이 과정과 읽은 근거를 남기는 연습이 필요한 초등학생",
+            ],
+        }
+        value = stable_pick(seed, "verified-student-type", alternatives[PROFILE])
+    return value.rstrip("., ")
+
+
+def direct_answer(locality: str, center: dict, student_type: str, seed: str) -> str:
+    center_name = center["center_name"] or f"{locality} 지역 센터"
+    school_context = (
+        f"제공된 {SCHOOL_NAME} 참고 자료와 학생의 실제 교재를 대조하고"
+        if center["schools"]
+        else "학생이 사용하는 학교 자료와 현재 교재를 직접 확인하고"
+    )
+    endings = [
+        "과목별로 무엇을 먼저 보완할지 정하는 순서가 필요합니다.",
+        "국어·영어·수학의 막힌 원인을 나눈 뒤 실행 가능한 주간 계획을 정해야 합니다.",
+        "세 과목을 같은 분량으로 늘리기보다 과목별 완료 기준과 재확인 날짜를 정해야 합니다.",
+        "현재 자료에서 확인한 문제를 수업, 복습과 재점검으로 연결하는지 살펴봐야 합니다.",
+    ]
+    return (
+        f"{locality}에서 {CATEGORY_NAME}을 찾는다면 {center_name}의 과목별 가능 학년을 먼저 확인하세요. "
+        f"{school_context}, {student_type}에게 맞게 "
+        f"{stable_pick(seed, 'direct-answer-ending', endings)}"
+    )
+
+
+def answer_cards(locality: str, center: dict, seed: str) -> list[tuple[str, str]]:
+    school_label = f"{SCHOOL_NAME} 자료" if center["schools"] else "현재 교재"
+    options = {
+        "high": [
+            ("01 / 내신 범위", f"{school_label}와 수행평가 일정을 과목별 계획으로 바꿉니다"),
+            ("02 / 모의고사", "틀린 문항을 개념·해석·풀이 단계로 나눠 다시 확인합니다"),
+            ("03 / 시간 배분", "시험 일정에 맞춰 집중 과목과 최소 복습량을 구분합니다"),
+        ],
+        "middle": [
+            ("01 / 개념 연결", "배운 개념을 학교 시험 문제에 적용하는 과정을 확인합니다"),
+            ("02 / 학교 일정", f"{school_label}와 시험 범위를 주간 과제에 연결합니다"),
+            ("03 / 실행 점검", "과제 완료와 오답 재풀이가 스스로 이어지는지 살펴봅니다"),
+        ],
+        "elementary": [
+            ("01 / 기초 이해", "읽기·어휘·계산 과정에서 멈추는 지점을 나눠 봅니다"),
+            ("02 / 교과 자료", f"{school_label}에서 현재 단원과 복습 범위를 확인합니다"),
+            ("03 / 공부 습관", "시작 시각과 완료 기준, 다시 풀 날짜를 짧게 기록합니다"),
+        ],
+    }
+    cards = options[PROFILE]
+    shift = int(hashlib.sha256(f"{seed}|answer-card".encode("utf-8")).hexdigest()[:4], 16) % len(cards)
+    return cards[shift:] + cards[:shift]
 
 
 def extract_student_type(body: str, locality: str) -> str:
@@ -296,8 +473,50 @@ def reduce_title_repetition(text: str, title: str, locality: str, seed: str, kee
     return re.sub(re.escape(title), replace, text)
 
 
-def personalize_body(body: str, title: str, locality: str, seed: str) -> tuple[str, list[tuple[str, list[str]]]]:
+def sanitize_grade_claims(text: str, center: dict) -> str:
+    """Remove unsupported exact-grade scenarios without inventing a replacement grade."""
+    permitted = supported_grades(center)
+    all_profile_grades = {
+        "high": ["고1", "고2", "고3"],
+        "middle": ["중1", "중2", "중3"],
+        "elementary": [f"초{number}" for number in range(1, 7)],
+    }[PROFILE]
+    for grade in all_profile_grades:
+        if grade in permitted:
+            continue
+        text = text.replace(f"{grade} 첫 학기", f"{LEVEL_NAME} 과정 초반")
+        text = text.replace(f"{grade} 진입", f"{LEVEL_NAME} 과정 전환")
+        text = re.sub(rf"(?<![가-힣0-9]){re.escape(grade)}(?![가-힣0-9])", LEVEL_NAME, text)
+    if PROFILE == "elementary":
+        # The manuscripts also use ranges such as `초등 1~2학년` and broad
+        # bands such as `저학년`. Keep them only when every referenced grade
+        # is supported for all three subjects at the matched center.
+        def replace_range(match: re.Match[str]) -> str:
+            start, end = int(match.group(1)), int(match.group(2))
+            claimed = {f"초{number}" for number in range(min(start, end), max(start, end) + 1)}
+            return match.group(0) if claimed <= permitted else "초등 과정"
+
+        text = re.sub(r"초등\s*([1-6])\s*[~～\-–—]\s*([1-6])학년", replace_range, text)
+
+        def replace_single(match: re.Match[str]) -> str:
+            claimed = f"초{match.group(1)}"
+            return match.group(0) if claimed in permitted else "초등 과정"
+
+        text = re.sub(r"초등\s*([1-6])학년", replace_single, text)
+        bands = {
+            "저학년": {"초1", "초2", "초3"},
+            "중학년": {"초3", "초4"},
+            "고학년": {"초4", "초5", "초6"},
+        }
+        for label, claimed in bands.items():
+            if not claimed <= permitted:
+                text = text.replace(f"초등 {label}", "초등 과정").replace(label, "초등 과정")
+    return text
+
+
+def personalize_body(body: str, title: str, locality: str, center: dict, seed: str) -> tuple[str, list[tuple[str, list[str]]]]:
     body = polish_korean(body, locality)
+    body = sanitize_grade_claims(body, center)
     body = body.replace("학생이며,", stable_pick(seed, "student-link", ["학생이고,", "학생으로,", "학생입니다. 또한 "]))
     body = body.replace(
         f"{locality} {LEVEL_NAME}에게 {LEVEL_NAME} 국영수학원이",
@@ -331,28 +550,33 @@ def personalize_body(body: str, title: str, locality: str, seed: str) -> tuple[s
         ]),
     )
     body = reduce_title_repetition(body, title, locality, seed, keep=4)
+    # Grade replacement can expose adjacent template fragments, so run the
+    # conservative Korean cleanup once more before turning the source into HTML.
+    body = polish_korean(body, locality)
     intro, sections = parse_body(body)
     return intro, sections
 
 
 def school_section(center: dict, locality: str) -> tuple[str, list[str]]:
     schools = center["schools"]
+    material_label = SCHOOL_MATERIALS if SCHOOL_MATERIALS.endswith("자료") else f"{SCHOOL_MATERIALS} 자료"
     heading = f"{locality} {SCHOOL_NAME} 자료를 수업 계획에 반영하는 방법"
     if schools:
         names = "·".join(schools)
         paragraphs = [
             f"제공된 {SCHOOL_NAME} 참고 목록은 {names}입니다. 이 목록은 수업 가능 여부를 단정하는 표현이 아니라 상담에서 학생의 실제 학교 자료를 확인하기 위한 참고 정보입니다.",
-            f"{locality} {LEVEL_NAME}은 {SCHOOL_MATERIALS} 자료를 가져와 국어 읽기와 문법 범위, 영어 어휘와 문장 적용, 수학 단원과 풀이 과정을 구분하는 것이 좋습니다. 학교명 반복보다 현재 자료를 어떻게 수업 계획에 반영하는지가 더 중요합니다.",
+            f"{locality} {LEVEL_NAME}은 {material_label}를 가져와 국어 읽기와 문법 범위, 영어 어휘와 문장 적용, 수학 단원과 풀이 과정을 구분하는 것이 좋습니다. 학교명 반복보다 현재 자료를 어떻게 수업 계획에 반영하는지가 더 중요합니다.",
         ]
     else:
         paragraphs = [
-            f"{locality} 페이지에 제공된 {SCHOOL_NAME} 목록은 없습니다. 확인되지 않은 학교명을 임의로 추가하지 않으며, 상담 시 학생이 실제로 사용하는 {SCHOOL_MATERIALS} 자료를 기준으로 확인해야 합니다.",
+            f"{locality} 페이지에 제공된 {SCHOOL_NAME} 목록은 없습니다. 확인되지 않은 학교명을 임의로 추가하지 않으며, 상담 시 학생이 실제로 사용하는 {material_label}를 기준으로 확인해야 합니다.",
             f"{locality} 학생의 학교 자료를 준비할 때는 국어 읽기와 문법 범위, 영어 어휘와 문장 적용, 수학 단원과 풀이 과정을 과목별로 나누면 현재 우선순위를 더 분명하게 정리할 수 있습니다.",
         ]
     return heading, paragraphs
 
 
 def build_faq(title: str, locality: str, center: dict, student_type: str, seed: str) -> list[tuple[str, str]]:
+    material_label = SCHOOL_MATERIALS if SCHOOL_MATERIALS.endswith("자료") else f"{SCHOOL_MATERIALS} 자료"
     q1 = stable_pick(seed, "q1", [
         f"{title} 상담은 어떤 학생에게 도움이 될 수 있나요?",
         f"{title}을 알아볼 때 학생 상태를 어떻게 확인하나요?",
@@ -394,7 +618,7 @@ def build_faq(title: str, locality: str, center: dict, student_type: str, seed: 
             f"제공된 {locality} {SCHOOL_NAME} 목록은 수업 가능 학교를 뜻하나요?",
             f"{locality} {LEVEL_NAME}은 상담 때 어떤 학교 자료를 준비해야 하나요?",
         ])
-        a3 = f"제공된 {SCHOOL_NAME} 참고 목록에는 {shown} 등이 포함됩니다. 이는 수업 가능 여부를 보장하는 목록이 아니며, 실제 {SCHOOL_MATERIALS} 자료와 센터별 개설 과목을 상담에서 함께 확인해야 합니다."
+        a3 = f"제공된 {SCHOOL_NAME} 참고 목록에는 {shown} 등이 포함됩니다. 이는 수업 가능 여부를 보장하는 목록이 아니며, 실제 {material_label}와 센터별 개설 과목을 상담에서 함께 확인해야 합니다."
     else:
         q3 = stable_pick(seed, "q3-none", [
             f"{locality} {SCHOOL_NAME} 목록이 없는 경우 상담은 어떻게 준비하나요?",
@@ -402,7 +626,7 @@ def build_faq(title: str, locality: str, center: dict, student_type: str, seed: 
             f"제공된 {locality} {SCHOOL_NAME} 정보가 없을 때 무엇을 확인해야 하나요?",
             f"{locality} 학생의 학교 자료는 상담 때 직접 가져가야 하나요?",
         ])
-        a3 = f"{locality}에 제공된 {SCHOOL_NAME} 목록이 없어 임의로 학교명을 추가하지 않았습니다. 학생이 실제 사용하는 {SCHOOL_MATERIALS} 자료를 준비하고 희망 센터의 과목·학년 운영 범위를 직접 확인하는 것이 정확합니다."
+        a3 = f"{locality}에 제공된 {SCHOOL_NAME} 목록이 없어 임의로 학교명을 추가하지 않았습니다. 학생이 실제 사용하는 {material_label}를 준비하고 희망 센터의 과목·학년 운영 범위를 직접 확인하는 것이 정확합니다."
     q4 = stable_pick(seed, "q4", [
         f"{locality} 상담 전에 센터 위치와 교습비는 어디에서 확인하나요?",
         f"{locality} 센터 방문 전에 확인할 운영 정보는 무엇인가요?",
@@ -417,6 +641,7 @@ def build_faq(title: str, locality: str, center: dict, student_type: str, seed: 
 
 
 def build_scenarios(locality: str, center: dict, student_type: str, seed: str) -> list[str]:
+    material_label = SCHOOL_MATERIALS if SCHOOL_MATERIALS.endswith("자료") else f"{SCHOOL_MATERIALS} 자료"
     first = stable_pick(seed, "scenario-1", [
         f"{locality}에서 {student_type} 자녀에 대해 학부모가 최근 시험지와 오답 노트를 함께 준비한 상황입니다. 상담에서는 세 과목을 모두 늘리기보다 먼저 바꿀 과목과 복습 시점을 정하고, 설명이 실제 주간 계획으로 이어지는지를 확인합니다.",
         f"{student_type}의 상담을 가정한 예시입니다. 국어·영어·수학 점수만 비교하지 않고 시작이 늦어진 과제, 반복한 오답과 학교 일정을 나누어 본 뒤 이번 주에 실행할 한두 가지를 정리합니다.",
@@ -428,7 +653,7 @@ def build_scenarios(locality: str, center: dict, student_type: str, seed: str) -
     if center["schools"]:
         school_note = f"제공된 {SCHOOL_NAME} 참고 정보인 {'·'.join(center['schools'][:3])}{' 등' if len(center['schools']) > 3 else ''}의 목록과 학생의 실제 학교 자료를 대조해 질문하는"
     else:
-        school_note = f"제공된 {SCHOOL_NAME} 목록이 없어 학생의 실제 {SCHOOL_MATERIALS} 자료를 직접 준비해 질문하는"
+        school_note = f"제공된 {SCHOOL_NAME} 목록이 없어 학생의 실제 {material_label}를 직접 준비해 질문하는"
     second = f"{locality} 기준 " + stable_pick(seed, "scenario-2", [
         f"{school_note} 상황입니다. 학부모는 학교명 자체보다 시험 범위와 수행평가 일정이 수업 계획에 반영되는지, 다음 확인 시점이 언제인지 기록합니다.",
         f"{school_note} 상담 예시입니다. 센터의 개설 과목과 가능 학년을 확인한 뒤 학생의 귀가 시간, 과제량과 시험 기간 보강 기준을 같은 메모에 정리합니다.",
@@ -580,8 +805,8 @@ def render_page(record: dict, previous_record: dict, next_record: dict) -> str:
     center = record["center"]
     meta = record["meta"]
     rep_name = record["rep_name"]
-    student_type = extract_student_type(sections["본문"], locality)
-    intro, body_sections = personalize_body(sections["본문"], title, locality, slug)
+    student_type = verified_student_type(extract_student_type(sections["본문"], locality), center, slug)
+    intro, body_sections = personalize_body(sections["본문"], title, locality, center, slug)
     replacement = school_section(center, locality)
     normalized_sections: list[tuple[str, list[str]]] = []
     school_section_added = False
@@ -598,6 +823,11 @@ def render_page(record: dict, previous_record: dict, next_record: dict) -> str:
     body_sections = normalized_sections
     faq = build_faq(title, locality, center, student_type, slug)
     scenarios = build_scenarios(locality, center, student_type, slug)
+    quick_answer = direct_answer(locality, center, student_type, slug)
+    answer_card_html = "".join(
+        f'<article><span>{esc(label)}</span><strong>{esc(answer)}</strong></article>'
+        for label, answer in answer_cards(locality, center, slug)
+    )
     graph = build_graph(title, locality, slug, center, meta, faq, [heading for heading, _ in body_sections], rep_name)
     graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     body_html = "".join(f'<section class="manuscript-section"><span class="section-kicker">{index:02d}</span><h2>{esc(heading)}</h2>{"".join(f"<p>{esc(paragraph)}</p>" for paragraph in paragraphs)}</section>' for index, (heading, paragraphs) in enumerate(body_sections, 1))
@@ -621,10 +851,10 @@ def render_page(record: dict, previous_record: dict, next_record: dict) -> str:
     <section class="local-hero"><div class="site-shell">
       <nav class="breadcrumbs" aria-label="현재 위치"><a href="../../../index.html">홈</a><a href="../../index.html">과목별학원</a><a href="../index.html">{CATEGORY_NAME}</a><span>{esc(title)}</span></nav>
       <p class="eyebrow">{ENGLISH_LEVEL} Korean · English · Math</p><h1>{esc(title)}</h1><p class="local-lead">{esc(meta)}</p>
-      <div class="local-answer-grid"><article><span>01 / 과목별 진단</span><strong>국어·영어·수학의 막힌 지점을 따로 봅니다</strong></article><article><span>02 / 학교 자료</span><strong>시험 범위와 수행평가 일정을 계획에 연결합니다</strong></article><article><span>03 / 재확인</span><strong>오답을 일정 시간이 지난 뒤 다시 풉니다</strong></article></div>
+      <div class="local-answer-grid">{answer_card_html}</div>
     </div></section>
     <section class="section local-overview"><div class="site-shell local-overview-grid">
-      <div class="local-summary"><p class="chapter-label"><span>01</span> Quick answer</p><h2>{esc(locality)}에서 먼저 확인할 내용</h2><p>{esc(meta)}</p><div class="answer-note"><strong>대표 학생 상황</strong><p>{esc(student_type)}</p></div></div>
+      <div class="local-summary"><p class="chapter-label"><span>01</span> Quick answer</p><h2>{esc(locality)}에서 먼저 확인할 내용</h2><p>{esc(quick_answer)}</p><div class="answer-note"><strong>대표 학생 상황</strong><p>{esc(student_type)}</p></div></div>
       <aside class="local-info-card"><p class="eyebrow">Center information</p><h2>수업·상담 확인 정보</h2>{render_info(center)}</aside>
     </div></section>
     <section class="local-media-section"><div class="site-shell local-media-stack">
@@ -676,9 +906,9 @@ def render_category_hub(records: list[dict]) -> str:
     graph_json = json.dumps(hub_graph(records), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{CATEGORY_NAME} 지역 안내 | {SITE_NAME}</title><meta name="description" content="371개 동네별 {CATEGORY_NAME} 페이지에서 국어·영어·수학 진단, {SCHOOL_NAME} 자료, 가능 학년과 센터 상담 정보를 확인하세요."><meta name="robots" content="index,follow,max-image-preview:large"><meta name="theme-color" content="#f7f3ec"><meta property="og:type" content="website"><meta property="og:locale" content="ko_KR"><meta property="og:title" content="{CATEGORY_NAME} 지역 안내 | {SITE_NAME}"><meta property="og:description" content="광역지역과 시군구별로 371개 {CATEGORY_NAME} 안내를 찾을 수 있습니다."><link rel="icon" href="../../assets/favicon.png"><link rel="stylesheet" href="../../assets/site14.css"><script type="application/ld+json">{graph_json}</script></head>
-<body data-page="subjects">{header("../../")}<main id="main"><section class="directory-hero"><div class="site-shell"><nav class="breadcrumbs" aria-label="현재 위치"><a href="../../index.html">홈</a><a href="../index.html">과목별학원</a><span>{CATEGORY_NAME}</span></nav><p class="eyebrow">National subject directory</p><h1>동네별 {CATEGORY_NAME}</h1><p>국어·영어·수학을 같은 분량으로 늘리기보다 과목별 병목, 학교 일정과 오답 재확인 순서를 나눠 확인하도록 371개 지역 페이지를 정리했습니다.</p><div class="hub-metrics"><div><strong>371</strong><span>지역 페이지</span></div><div><strong>3</strong><span>국어·영어·수학</span></div><div><strong>1:1</strong><span>원고·센터 매칭</span></div></div></div></section>
+<body data-page="subjects">{header("../../")}<main id="main"><section class="directory-hero"><div class="site-shell"><nav class="breadcrumbs" aria-label="현재 위치"><a href="../../index.html">홈</a><a href="../index.html">과목별학원</a><span>{CATEGORY_NAME}</span></nav><p class="eyebrow">National subject directory</p><h1>동네별 {CATEGORY_NAME}</h1><p>{HUB_INTRO}</p><div class="hub-metrics"><div><strong>371</strong><span>지역 페이지</span></div><div><strong>{HUB_FOCUS}</strong><span>{LEVEL_NAME} 핵심 기준</span></div><div><strong>{HUB_PROCESS}</strong><span>상담 확인 흐름</span></div></div></div></section>
 <section class="section directory-section"><div class="site-shell"><div class="directory-toolbar"><label for="local-search">동네 이름으로 찾기</label><div class="directory-search"><input id="local-search" type="search" placeholder="예: 명일동, 불당동, 중계동" autocomplete="off" data-local-search><span data-directory-count>전체 371개 지역</span></div><div class="region-filters" aria-label="광역지역 선택">{region_buttons}</div><div class="directory-actions"><button type="button" data-expand-all>모두 펼치기</button><button type="button" data-collapse-all>모두 접기</button></div></div><div class="directory-empty" data-directory-empty hidden>검색 조건에 맞는 동네가 없습니다.</div><div class="directory-list">{"".join(blocks)}</div></div></section>
-<section class="section ink"><div class="site-shell consult-cta"><div><h2>과목 수보다 먼저, 학생의 병목과 학교 일정을 확인하세요</h2><p>최근 시험지, 학교 프린트와 반복 오답을 준비하면 세 과목의 우선순위를 더 구체적으로 나눌 수 있습니다.</p></div><a class="button orange" href="../../상담문의/index.html">상담 방법 확인 <span aria-hidden="true">→</span></a></div></section></main>{footer("../../")}<script src="../../assets/site14.js" defer></script></body></html>'''
+<section class="section ink"><div class="site-shell consult-cta"><div><h2>{HUB_CTA}</h2><p>{HUB_CTA_BODY}</p></div><a class="button orange" href="../../상담문의/index.html">상담 방법 확인 <span aria-hidden="true">→</span></a></div></section></main>{footer("../../")}<script src="../../assets/site14.js" defer></script></body></html>'''
 
 
 def root_hub_graph() -> dict:
@@ -701,7 +931,7 @@ def root_hub_graph() -> dict:
 def render_root_hub() -> str:
     graph_json = json.dumps(root_hub_graph(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     cards = "".join(
-        f'<a class="subject-hub-card" href="{config["slug"]}/index.html"><span>{config["english"].upper()} / {index:02d}</span><h3>{config["category"]}</h3><p>371개 동네별 국어·영어·수학 진단, {config["school"]} 자료와 과목별 오답 관리 기준을 확인합니다.</p><div><b>371개 지역</b><i aria-hidden="true">→</i></div></a>'
+        f'<a class="subject-hub-card" href="{config["slug"]}/index.html"><span>{config["english"].upper()} / {index:02d}</span><h3>{config["category"]}</h3><p>{config["root_card"]}</p><div><b>371개 지역</b><i aria-hidden="true">→</i></div></a>'
         for index, config in enumerate(ROOT_CATEGORIES, 1)
     )
     return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>과목별학원 | {SITE_NAME}</title><meta name="description" content="학년과 과목 조합에 맞춰 지역별 학습 상담 정보를 찾을 수 있도록 과목별학원 카테고리와 선택 기준을 정리했습니다."><meta name="robots" content="index,follow,max-image-preview:large"><meta name="theme-color" content="#f7f3ec"><meta property="og:type" content="website"><meta property="og:locale" content="ko_KR"><meta property="og:title" content="과목별학원 | {SITE_NAME}"><meta property="og:description" content="학년·과목별 학습 목표와 지역 센터 정보를 한 흐름에서 확인하세요."><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/site14.css"><script type="application/ld+json">{graph_json}</script></head><body data-page="subjects">{header("../")}<main id="main"><section class="directory-hero subjects-root-hero"><div class="site-shell"><nav class="breadcrumbs" aria-label="현재 위치"><a href="../index.html">홈</a><span>과목별학원</span></nav><p class="eyebrow">Subject academy guide</p><h1>과목별학원</h1><p>같은 학년이라도 과목 조합과 막히는 지점에 따라 확인할 수업 기록이 다릅니다. 학생에게 필요한 카테고리를 선택한 뒤 지역별 센터 정보와 학습 안내를 확인하세요.</p></div></section><section class="section"><div class="site-shell"><div class="section-heading"><div class="chapter-label"><span>01</span> Category</div><div><h2>현재 확인할 수 있는 학원 안내</h2><p>검증된 원고와 센터정보를 기준으로 고등·중등·초등 과정을 구분했습니다.</p></div></div><div class="subject-hub-grid">{cards}</div></div></section><section class="section blue-wash"><div class="site-shell"><div class="section-heading"><div class="chapter-label"><span>02</span> How to choose</div><div><h2>카테고리를 고를 때 확인할 세 가지</h2><p>과목명만 보고 결정하지 않고 학생의 실제 자료와 센터 운영 범위를 함께 확인합니다.</p></div></div><div class="role-grid"><article class="role-card"><span class="icon">01</span><h3>학생의 현재 학년</h3><p>페이지 제목과 별개로 희망 센터에서 해당 학년과 과목을 실제로 운영하는지 확인합니다.</p></article><article class="role-card"><span class="icon">02</span><h3>최근 평가와 교재</h3><p>점수만 말하기보다 틀린 문제와 현재 교재를 준비해 과목별 병목을 구분합니다.</p></article><article class="role-card"><span class="icon">03</span><h3>주간 실행 가능성</h3><p>학교 일정, 귀가 시간과 복습 시간을 함께 놓고 무리하지 않는 과제량을 확인합니다.</p></article></div></div></section></main>{footer("../")}<script src="../assets/site14.js" defer></script></body></html>'''
@@ -757,7 +987,11 @@ def main() -> None:
     update_base_navigation()
     from prepare_production_domain import main as prepare_production_domain
     prepare_production_domain()
-    print(json.dumps({"detail_pages": len(records), "category_hub": str(CATEGORY_ROOT / 'index.html'), "subject_hub": str(TARGET_ROOT / 'index.html'), "unique_representatives": len(set(representatives))}, ensure_ascii=False))
+    # Keep generated links on their final canonical URLs and rebuild social cards
+    # from the representative/hero image after production-domain metadata is ready.
+    from normalize_internal_links_and_social_meta import normalize_site
+    normalization = normalize_site(ROOT, apply=True)
+    print(json.dumps({"detail_pages": len(records), "category_hub": str(CATEGORY_ROOT / 'index.html'), "subject_hub": str(TARGET_ROOT / 'index.html'), "unique_representatives": len(set(representatives)), "normalization": normalization}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

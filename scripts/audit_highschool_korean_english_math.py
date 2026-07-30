@@ -31,6 +31,29 @@ def clean(value: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", value)).strip()
 
 
+def incorrect_particle_forms(text: str) -> list[str]:
+    pattern = re.compile(
+        r"(?P<stem>[가-힣A-Za-z0-9·]+?)(?P<particle>으로|로|을|를|은|는)"
+        r"(?=$|[\s,.;:!?…\)\]\}\"'”’])"
+    )
+    wrong: list[str] = []
+    for match in pattern.finditer(text):
+        stem, particle = match.group("stem"), match.group("particle")
+        last_hangul = next((char for char in reversed(stem) if "가" <= char <= "힣"), None)
+        if not last_hangul:
+            continue
+        jongseong = (ord(last_hangul) - 0xAC00) % 28
+        if particle in {"을", "를"}:
+            expected = "을" if jongseong else "를"
+        elif particle in {"은", "는"}:
+            expected = "은" if jongseong else "는"
+        else:
+            expected = "로" if jongseong in {0, 8} else "으로"
+        if particle != expected:
+            wrong.append(match.group(0))
+    return wrong
+
+
 def list_values(value: str) -> list[str]:
     return list(dict.fromkeys(part.strip() for part in re.split(r"[,/\n]+", value or "") if part.strip()))
 
@@ -70,11 +93,20 @@ def main() -> None:
     representative_paths: list[Path] = []
     paragraph_counter: Counter[str] = Counter()
     center_schools: dict[str, set[str]] = {}
+    center_supported_grades: dict[str, set[str]] = {}
     known_schools: set[str] = set()
     with (COMMON / "센터정보 정리.csv").open(encoding="utf-8-sig", newline="") as handle:
         for row in csv.DictReader(handle):
             locality = row["근처 수업가능 동네"].strip()
             center_schools[locality] = set(list_values(row[SCHOOL_COLUMN]))
+            subject_grade_sets = [
+                {grade for grade in list_values(row[column]) if grade.startswith(COURSE_NAME[0])}
+                for column in ("가능학년\n(국어)", "가능학년\n(영어)", "가능학년\n(수학)")
+            ]
+            non_empty_grade_sets = [values for values in subject_grade_sets if values]
+            center_supported_grades[locality] = (
+                set.intersection(*non_empty_grade_sets) if non_empty_grade_sets else set()
+            )
             for column in ("타깃학교\n(초)", "타깃학교\n(중)", "타깃학교\n(고)"):
                 known_schools.update(list_values(row[column]))
 
@@ -104,7 +136,8 @@ def main() -> None:
         if any(value in raw for value in (
             "학원와", "니다, 그리고", "학생 학생", "안내이 ", "층로", "습관를", "학원등원", "학원차량",
             "학원를", "점검를", "일정를", "일정와", "학원교통", "학습동기관리", "국영수 학습 안내문",
-            "FAQ 구조화 데이터",
+            "FAQ 구조화 데이터", "자료 자료", "상담 상담", "시기 시기", "기준 기준",
+            "운영 운영", "방식를", "내용를", "과정를", "고1식 공부법",
         )):
             errors.append(f"{rel}: awkward phrase")
         if 'data-nav="subjects" aria-current="page"' not in raw:
@@ -173,7 +206,30 @@ def main() -> None:
             if len(section_headings) != len(set(section_headings)):
                 errors.append(f"{rel}: duplicate manuscript headings")
             manuscript_text = clean(section_match.group(1))
+            particle_errors = incorrect_particle_forms(manuscript_text)
+            if particle_errors:
+                errors.append(f"{rel}: particle errors={particle_errors[:6]}")
+            if PROFILE == "elementary" and "중등식 문제량" in manuscript_text:
+                errors.append(f"{rel}: middle-school phrasing in elementary manuscript")
             locality = title.removesuffix(f" {LEVEL_NAME} 국영수학원").strip()
+            if PROFILE == "elementary":
+                permitted = center_supported_grades.get(locality, set())
+                for match in re.finditer(r"초등\s*([1-6])\s*[~～\-–—]\s*([1-6])학년", manuscript_text):
+                    start, end = int(match.group(1)), int(match.group(2))
+                    claimed = {f"초{number}" for number in range(min(start, end), max(start, end) + 1)}
+                    if not claimed <= permitted:
+                        errors.append(f"{rel}: unsupported grade range={match.group(0)}")
+                for match in re.finditer(r"초등\s*([1-6])학년", manuscript_text):
+                    if f"초{match.group(1)}" not in permitted:
+                        errors.append(f"{rel}: unsupported grade={match.group(0)}")
+                grade_bands = {
+                    "저학년": {"초1", "초2", "초3"},
+                    "중학년": {"초3", "초4"},
+                    "고학년": {"초4", "초5", "초6"},
+                }
+                for label, claimed in grade_bands.items():
+                    if label in manuscript_text and not claimed <= permitted:
+                        errors.append(f"{rel}: unsupported grade band={label}")
             unexpected_schools = sorted(
                 school for school in known_schools - center_schools.get(locality, set())
                 if len(school) >= 2 and school in manuscript_text
