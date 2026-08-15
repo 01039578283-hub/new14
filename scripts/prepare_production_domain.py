@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 from email.utils import format_datetime
 from html import escape
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit, urlunsplit
+
+try:
+    from .subject_catalog import SUBJECT_CATALOG
+except ImportError:
+    from subject_catalog import SUBJECT_CATALOG
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,7 +30,19 @@ def page_path(path: Path) -> str:
 
 
 def absolute_url(path: Path) -> str:
-    return BASE_URL + page_path(path)
+    return absolute_site_url(page_path(path))
+
+
+def absolute_site_url(path: str) -> str:
+    parts = urlsplit(path)
+    encoded = urlunsplit((
+        "",
+        "",
+        quote(parts.path, safe="/%:@"),
+        quote(parts.query, safe="=&%/:;+?,@"),
+        quote(parts.fragment, safe="%/:?&=;+,@"),
+    ))
+    return BASE_URL + encoded
 
 
 def absolutize_json(value, key: str | None = None):
@@ -34,7 +51,7 @@ def absolutize_json(value, key: str | None = None):
     if isinstance(value, list):
         return [absolutize_json(item, key) for item in value]
     if isinstance(value, str) and key in JSON_URL_KEYS and value.startswith("/"):
-        return BASE_URL + value
+        return absolute_site_url(value)
     return value
 
 
@@ -108,9 +125,7 @@ def write_rss() -> None:
         ROOT / "학원소개" / "index.html",
         ROOT / "학습가이드" / "index.html",
         ROOT / "과목별학원" / "index.html",
-        ROOT / "과목별학원" / "고등학생국영수학원" / "index.html",
-        ROOT / "과목별학원" / "중학생국영수학원" / "index.html",
-        ROOT / "과목별학원" / "초등학생국영수학원" / "index.html",
+        *(ROOT / "과목별학원" / category["slug"] / "index.html" for category in SUBJECT_CATALOG),
     ]
     items = []
     for path in candidates:

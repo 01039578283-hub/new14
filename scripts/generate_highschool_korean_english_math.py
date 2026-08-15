@@ -13,6 +13,11 @@ from pathlib import Path
 from urllib.parse import quote
 from zipfile import ZipFile
 
+try:
+    from .subject_catalog import SUBJECT_CATALOG
+except ImportError:
+    from subject_catalog import SUBJECT_CATALOG
+
 
 ROOT = Path(__file__).resolve().parents[1]
 COMMON = ROOT.parent / "참고자료" / "공통자료"
@@ -62,7 +67,6 @@ PROFILES = {
 if PROFILE not in PROFILES:
     raise SystemExit(f"Unknown profile: {PROFILE}. Choose high, middle, or elementary.")
 CONFIG = PROFILES[PROFILE]
-ROOT_CATEGORIES = [PROFILES[key] for key in ("high", "middle", "elementary")]
 SOURCE_ZIP = CONFIG["source"]
 CENTER_CSV = COMMON / "센터정보 정리.csv"
 IMAGE_CSV = COMMON / "이미지링크.csv"
@@ -1140,12 +1144,12 @@ def render_category_hub(records: list[dict]) -> str:
 
 def root_hub_graph() -> dict:
     category_pages = [
-        {"@type": "WebPage", "name": config["category"], "url": f"/과목별학원/{config['slug']}/"}
-        for config in ROOT_CATEGORIES
+        {"@type": "WebPage", "name": category["label"], "url": f"/과목별학원/{category['slug']}/"}
+        for category in SUBJECT_CATALOG
     ]
     category_items = [
-        {"@type": "ListItem", "position": index, "name": config["category"], "url": f"/과목별학원/{config['slug']}/"}
-        for index, config in enumerate(ROOT_CATEGORIES, 1)
+        {"@type": "ListItem", "position": category["order"], "name": category["label"], "url": f"/과목별학원/{category['slug']}/"}
+        for category in SUBJECT_CATALOG
     ]
     return {"@context": "https://schema.org", "@graph": [
         {"@type": "EducationalOrganization", "@id": "/#organization", "name": SITE_NAME, "url": "/", "telephone": PHONE, "teaches": ["국어", "영어", "수학", "학습코칭"]},
@@ -1158,10 +1162,10 @@ def root_hub_graph() -> dict:
 def render_root_hub() -> str:
     graph_json = json.dumps(root_hub_graph(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     cards = "".join(
-        f'<a class="subject-hub-card" href="{config["slug"]}/index.html"><span>{config["english"].upper()} / {index:02d}</span><h3>{config["category"]}</h3><p>{config["root_card"]}</p><div><b>371개 지역</b><i aria-hidden="true">→</i></div></a>'
-        for index, config in enumerate(ROOT_CATEGORIES, 1)
+        f'<a class="subject-hub-card" href="{esc(category["slug"])}/index.html"><span>{esc(category["english"].upper())} / {category["order"]:02d}</span><h3>{esc(category["label"])}</h3><p>{esc(category["description"])}</p><div><b>371개 지역</b><i aria-hidden="true">→</i></div></a>'
+        for category in SUBJECT_CATALOG
     )
-    return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>과목별학원 | {SITE_NAME}</title><meta name="description" content="학년과 과목 조합에 맞춰 지역별 학습 상담 정보를 찾을 수 있도록 과목별학원 카테고리와 선택 기준을 정리했습니다."><meta name="robots" content="index,follow,max-image-preview:large"><meta name="theme-color" content="#f7f3ec"><meta property="og:type" content="website"><meta property="og:locale" content="ko_KR"><meta property="og:title" content="과목별학원 | {SITE_NAME}"><meta property="og:description" content="학년·과목별 학습 목표와 지역 센터 정보를 한 흐름에서 확인하세요."><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/site14.css"><script type="application/ld+json">{graph_json}</script></head><body data-page="subjects">{header("../")}<main id="main"><section class="directory-hero subjects-root-hero"><div class="site-shell"><nav class="breadcrumbs" aria-label="현재 위치"><a href="../index.html">홈</a><span>과목별학원</span></nav><p class="eyebrow">Subject academy guide</p><h1>과목별학원</h1><p>같은 학년이라도 과목 조합과 막히는 지점에 따라 확인할 수업 기록이 다릅니다. 학생에게 필요한 카테고리를 선택한 뒤 지역별 센터 정보와 학습 안내를 확인하세요.</p></div></section><section class="section"><div class="site-shell"><div class="section-heading"><div class="chapter-label"><span>01</span> Category</div><div><h2>현재 확인할 수 있는 학원 안내</h2><p>검증된 원고와 센터정보를 기준으로 고등·중등·초등 과정을 구분했습니다.</p></div></div><div class="subject-hub-grid">{cards}</div></div></section><section class="section blue-wash"><div class="site-shell"><div class="section-heading"><div class="chapter-label"><span>02</span> How to choose</div><div><h2>카테고리를 고를 때 확인할 세 가지</h2><p>과목명만 보고 결정하지 않고 학생의 실제 자료와 센터 운영 범위를 함께 확인합니다.</p></div></div><div class="role-grid"><article class="role-card"><span class="icon">01</span><h3>학생의 현재 학년</h3><p>페이지 제목과 별개로 희망 센터에서 해당 학년과 과목을 실제로 운영하는지 확인합니다.</p></article><article class="role-card"><span class="icon">02</span><h3>최근 평가와 교재</h3><p>점수만 말하기보다 틀린 문제와 현재 교재를 준비해 과목별 병목을 구분합니다.</p></article><article class="role-card"><span class="icon">03</span><h3>주간 실행 가능성</h3><p>학교 일정, 귀가 시간과 복습 시간을 함께 놓고 무리하지 않는 과제량을 확인합니다.</p></article></div></div></section></main>{footer("../")}<script src="../assets/site14.js" defer></script></body></html>'''
+    return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>과목별학원 | {SITE_NAME}</title><meta name="description" content="학년과 과목 조합에 맞춰 지역별 학습 상담 정보를 찾을 수 있도록 과목별학원 카테고리와 선택 기준을 정리했습니다."><meta name="robots" content="index,follow,max-image-preview:large"><meta name="theme-color" content="#f7f3ec"><meta property="og:type" content="website"><meta property="og:locale" content="ko_KR"><meta property="og:title" content="과목별학원 | {SITE_NAME}"><meta property="og:description" content="학년·과목별 학습 목표와 지역 센터 정보를 한 흐름에서 확인하세요."><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/site14.css"><script type="application/ld+json">{graph_json}</script></head><body data-page="subjects">{header("../")}<main id="main"><section class="directory-hero subjects-root-hero"><div class="site-shell"><nav class="breadcrumbs" aria-label="현재 위치"><a href="../index.html">홈</a><span>과목별학원</span></nav><p class="eyebrow">Subject academy guide</p><h1>과목별학원</h1><p>같은 학년이라도 과목 조합과 막히는 지점에 따라 확인할 수업 기록이 다릅니다. 학생에게 필요한 카테고리를 선택한 뒤 지역별 센터 정보와 학습 안내를 확인하세요.</p></div></section><section class="section"><div class="site-shell"><div class="section-heading"><div class="chapter-label"><span>01</span> Category</div><div><h2>현재 확인할 수 있는 학원 안내</h2><p>검증된 원고와 센터정보를 기준으로 학년과 과목 조합을 구분했습니다.</p></div></div><div class="subject-hub-grid">{cards}</div></div></section><section class="section blue-wash"><div class="site-shell"><div class="section-heading"><div class="chapter-label"><span>02</span> How to choose</div><div><h2>카테고리를 고를 때 확인할 세 가지</h2><p>과목명만 보고 결정하지 않고 학생의 실제 자료와 센터 운영 범위를 함께 확인합니다.</p></div></div><div class="role-grid"><article class="role-card"><span class="icon">01</span><h3>학생의 현재 학년</h3><p>페이지 제목과 별개로 희망 센터에서 해당 학년과 과목을 실제로 운영하는지 확인합니다.</p></article><article class="role-card"><span class="icon">02</span><h3>최근 평가와 교재</h3><p>점수만 말하기보다 틀린 문제와 현재 교재를 준비해 과목별 병목을 구분합니다.</p></article><article class="role-card"><span class="icon">03</span><h3>주간 실행 가능성</h3><p>학교 일정, 귀가 시간과 복습 시간을 함께 놓고 무리하지 않는 과제량을 확인합니다.</p></article></div></div></section></main>{footer("../")}<script src="../assets/site14.js" defer></script></body></html>'''
 
 
 def update_base_navigation() -> None:

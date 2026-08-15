@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DETAIL_GLOB = "과목별학원/*/*/index.html"
 BASE_URL = "https://xn--3e0bz50b1zcyxat54c.com"
 PHONE = "010-6839-8283"
+MINIMUM_DETAIL_PAGES = 1113
+MINIMUM_PHYSICAL_CENTERS = 188
 GRAPH_RE = re.compile(
     r'(<script\s+type="application/ld\+json">)(.*?)(</script>)', re.DOTALL
 )
@@ -71,6 +73,23 @@ def center_key(org: dict) -> str:
 
 def natural_unique(values: list[str]) -> list[str]:
     return list(dict.fromkeys(value for value in values if value))
+
+
+def has_fee_offer(offers: object) -> bool:
+    return isinstance(offers, list) and any(
+        isinstance(offer, dict) and bool(str(offer.get("url", "")).strip())
+        for offer in offers
+    )
+
+
+def topic_marker(value: str) -> str:
+    for character in reversed(value.strip()):
+        codepoint = ord(character)
+        if 0xAC00 <= codepoint <= 0xD7A3:
+            return "은" if (codepoint - 0xAC00) % 28 else "는"
+        if character.isalnum():
+            break
+    return "은"
 
 
 def absolute_url(value: str) -> str:
@@ -149,10 +168,23 @@ def stable_entity(group: list[Page], key: str) -> dict:
         ),
         key=grade_sort,
     )
-    offers_by_url: dict[str, dict] = {}
+    offers_by_key: dict[str, dict] = {}
     for page in group:
         for offer in page.org.get("makesOffer", []):
-            offers_by_url.setdefault(str(offer.get("url", "")), offer)
+            normalized = json.loads(json.dumps(offer, ensure_ascii=False))
+            item_offered = normalized.get("itemOffered")
+            # Page-local Service @ids must not leak into the shared physical
+            # center entity. Keep the semantic service name and grade scope.
+            if isinstance(item_offered, dict):
+                item_offered.pop("@id", None)
+            key_data = {
+                "url": normalized.get("url", ""),
+                "name": normalized.get("name", ""),
+                "eligibleCustomerType": normalized.get("eligibleCustomerType", ""),
+                "itemOffered": normalized.get("itemOffered", {}),
+            }
+            offer_key = json.dumps(key_data, ensure_ascii=False, sort_keys=True)
+            offers_by_key.setdefault(offer_key, normalized)
     image = ""
     for page in sorted(group, key=lambda value: str(value.path)):
         if page.business and page.business.get("image"):
@@ -181,7 +213,7 @@ def stable_entity(group: list[Page], key: str) -> dict:
         "address": address,
         "areaServed": areas,
         "description": (
-            f"{sample['name']}은 제공된 센터 자료에서 {address.get('streetAddress', '')} 소재로 확인되며, "
+            f"{sample['name']}{topic_marker(str(sample['name']))} 제공된 센터 자료에서 {address.get('streetAddress', '')} 소재로 확인되며, "
             f"{area_text} 인근 학생의 국어·영어·수학 학습 상담과 과목별 가능 학년·교습비 확인 경로를 안내합니다."
         ),
         "parentOrganization": {"@id": f"{BASE_URL}/#organization"},
@@ -194,16 +226,19 @@ def stable_entity(group: list[Page], key: str) -> dict:
         entity["identifier"] = sample["identifier"]
     if levels:
         entity["educationalLevel"] = levels
-    if offers_by_url:
-        entity["makesOffer"] = list(offers_by_url.values())
+    if offers_by_key:
+        entity["makesOffer"] = list(offers_by_key.values())
     return entity
 
 
 def verified_answer(page: Page, entity: dict) -> str:
     address = entity.get("address", {}).get("streetAddress", "")
     grade_text = ", ".join(f"{subject} {grades}" for subject, grades in page.grades)
-    fee = bool(entity.get("makesOffer"))
+    missing_grade_subjects = [subject for subject, grades in page.grades if grades == "상담 시 확인"]
+    listed_grade_items = [(subject, grades) for subject, grades in page.grades if grades != "상담 시 확인"]
+    fee = has_fee_offer(page.service.get("offers", []))
     seed = page.path.relative_to(ROOT).as_posix()
+    page_title = str(page.article.get("headline") or page.webpage.get("name") or page.locality)
 
     def pick(label: str, choices: list[str]) -> str:
         digest = hashlib.sha256(f"{seed}|{label}".encode("utf-8")).hexdigest()
@@ -217,14 +252,25 @@ def verified_answer(page: Page, entity: dict) -> str:
         f"제공 자료상 해당 센터 위치는 {address}입니다.",
         f"주소 자료에는 센터가 {address}에 있는 것으로 기재되어 있습니다.",
     ])
-    grade_sentence = pick("verified-grades", [
-        f"과목별 가능 학년은 {grade_text}입니다.",
-        f"제공된 가능 학년은 {grade_text}로 확인됩니다.",
-        f"학년 정보는 {grade_text}로 구분되어 있습니다.",
-        f"센터 자료의 과목별 학년 표기는 {grade_text}입니다.",
-        f"현재 페이지에서 확인할 수 있는 학년 범위는 {grade_text}입니다.",
-        f"국어·영어·수학의 제공 학년 정보는 각각 {grade_text}입니다.",
-    ])
+    if missing_grade_subjects:
+        if listed_grade_items:
+            listed_text = ", ".join(f"{subject} {grades}" for subject, grades in listed_grade_items)
+            grade_sentence = (
+                f"제공 자료에는 {listed_text} 범위가 기재되어 있으며, {'·'.join(missing_grade_subjects)} 가능 학년은 상담에서 확인해야 합니다."
+            )
+        else:
+            grade_sentence = (
+                f"제공 자료에 {'·'.join(missing_grade_subjects)} 가능 학년이 기재되지 않아 상담 확인이 필요합니다."
+            )
+    else:
+        grade_sentence = pick("verified-grades", [
+            f"과목별 가능 학년은 {grade_text}입니다.",
+            f"제공 자료에서 확인한 가능 학년은 {grade_text}입니다.",
+            f"과목별 학년 정보는 {grade_text}입니다.",
+            f"센터 자료의 과목별 학년 표기는 {grade_text}입니다.",
+            f"현재 페이지에서 확인할 수 있는 학년 범위는 {grade_text}입니다.",
+            f"제공 자료의 과목별 학년 정보는 {grade_text}입니다.",
+        ])
     fee_text = pick("verified-fee", [
         "교습비 자료는 페이지의 센터별 교습비 확인 버튼에서 볼 수 있습니다.",
         "페이지에 연결된 센터별 교습비 자료도 함께 확인할 수 있습니다.",
@@ -242,7 +288,8 @@ def verified_answer(page: Page, entity: dict) -> str:
         "차량·주차와 구체적인 수업 시간은 페이지에서 단정하지 않으며 센터의 현재 안내를 확인해야 합니다.",
         "운영 조건은 시점에 따라 달라질 수 있으므로 과목·학년·시간표를 등록 전에 한 번 더 확인하세요.",
     ])
-    return " ".join((address_text, grade_sentence, fee_text, caution))
+    context = f"{page_title} 페이지의 제공 센터 사실을 기준으로 답합니다."
+    return " ".join((context, address_text, grade_sentence, fee_text, caution))
 
 
 def update_visible_facts(text: str, page: Page, entity: dict) -> str:
@@ -264,17 +311,14 @@ def update_visible_facts(text: str, page: Page, entity: dict) -> str:
         if count != 1:
             raise ValueError(f"Center facts insertion failed: {page.path}")
 
-        grade_text = ", ".join(
-            f"{subject} {grades}" for subject, grades in page.grades
-        )
         fee_text = (
             "교습비 자료는 아래 확인 버튼으로 연결됩니다."
-            if entity.get("makesOffer") else
+            if has_fee_offer(page.service.get("offers", [])) else
             "제공된 교습비 링크가 없어 비용은 센터 상담에서 확인합니다."
         )
         note = (
-            '<p class="center-verified-note"><strong>제공 자료로 확인한 범위</strong>'
-            f'<span>{html.escape(grade_text)} · {html.escape(fee_text)} '
+            '<p class="center-verified-note"><strong>제공 자료 확인 기준</strong>'
+            f'<span>표기된 학년은 제공 자료 기준입니다. {html.escape(fee_text)} '
             '시간표·보강·차량·주차는 센터에서 확인합니다.</span></p>'
         )
         text, count = re.subn(
@@ -420,13 +464,17 @@ def replace_graph(text: str, graph: dict, path: Path) -> str:
 def process() -> dict:
     paths = sorted(ROOT.glob(DETAIL_GLOB))
     pages = [parse_page(path) for path in paths]
-    if len(pages) != 1113:
-        raise ValueError(f"Expected 1113 detail pages, found {len(pages)}")
+    if len(pages) < MINIMUM_DETAIL_PAGES:
+        raise ValueError(
+            f"Expected at least {MINIMUM_DETAIL_PAGES} detail pages, found {len(pages)}"
+        )
     groups: dict[str, list[Page]] = defaultdict(list)
     for page in pages:
         groups[center_key(page.org)].append(page)
-    if len(groups) != 188:
-        raise ValueError(f"Expected 188 physical centers, found {len(groups)}")
+    if len(groups) < MINIMUM_PHYSICAL_CENTERS:
+        raise ValueError(
+            f"Expected at least {MINIMUM_PHYSICAL_CENTERS} physical centers, found {len(groups)}"
+        )
 
     entity_by_key = {
         key: stable_entity(group, key) for key, group in groups.items()
@@ -437,6 +485,7 @@ def process() -> dict:
     for page in pages:
         key = center_key(page.org)
         entity = json.loads(json.dumps(entity_by_key[key], ensure_ascii=False))
+        page_service_offers = json.loads(json.dumps(page.service.get("offers", []), ensure_ascii=False))
         nodes = page.graph["@graph"]
         old_org_id = page.org["@id"]
         old_business_id = page.business.get("@id") if page.business else None
@@ -453,8 +502,8 @@ def process() -> dict:
                     node["mentions"] = [{"@id": entity["@id"]}, *mentions]
             elif node_has_type(node, "Service"):
                 node["provider"] = {"@id": entity["@id"]}
-                if entity.get("makesOffer"):
-                    node["offers"] = entity["makesOffer"]
+                if page_service_offers:
+                    node["offers"] = page_service_offers
                 node.pop("makesOffer", None)
             elif node_has_type(node, "WebPage"):
                 about = node.get("about", [])

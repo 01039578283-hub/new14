@@ -191,7 +191,7 @@ def main() -> None:
         if not re.search(r'class="local-body-image"><img[^>]+loading="lazy"[^>]+decoding="async"', raw):
             errors.append(f"{rel}: body image loading")
 
-        section_match = re.search(r'<section class="manuscript-wrap">(.*?)</section>\s*<section class="section blue-wash">', raw, re.DOTALL)
+        section_match = re.search(r'<section class="(?:section\s+)?manuscript-wrap">(.*?)</section>\s*<section class="section blue-wash">', raw, re.DOTALL)
         if section_match:
             section_headings = [clean(value) for value in re.findall(r'<h2[^>]*>(.*?)</h2>', section_match.group(1), re.DOTALL)]
             if len(section_headings) != len(set(section_headings)):
