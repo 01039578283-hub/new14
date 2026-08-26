@@ -174,7 +174,7 @@ def add_social_meta(source: str, page: Path, root: Path) -> tuple[str, bool, boo
     mime, width, height = local_media_info(image_url, root)
     title = title_value(source)
     description = meta_value(source, property_name="og:description") or meta_value(source, name="description")
-    alt = title.removesuffix(" | 와와학습코칭센터").strip() + " 대표 이미지"
+    alt = title.removesuffix(" | 와와학습코칭센터 영어수학 전문학원").strip() + " 대표 이미지"
 
     source = remove_social_meta(source)
     # Keep repeated generator runs byte-stable after removing and rebuilding this block.

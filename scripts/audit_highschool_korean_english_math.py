@@ -113,7 +113,7 @@ def main() -> None:
         if not title_match or len(h1_match) != 1 or not meta_match:
             errors.append(f"{rel}: title/h1/meta")
             continue
-        title = clean(title_match.group(1)).removesuffix(" | 와와학습코칭센터")
+        title = clean(title_match.group(1)).removesuffix(" | 와와학습코칭센터 영어수학 전문학원")
         h1 = clean(h1_match[0])
         meta = html.unescape(meta_match.group(1))
         titles.append(title)

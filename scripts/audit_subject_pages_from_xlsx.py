@@ -23,6 +23,7 @@ from generate_subject_pages_from_xlsx import (
     ORIGIN,
     ROOT,
     SITE_NAME,
+    TITLE_SUFFIX,
     TARGET_ROOT,
     absolute_route,
     load_centers,
@@ -424,11 +425,11 @@ def expected_meta(
     og_descriptions = meta_values(raw, prop="og:description")
     og_types = meta_values(raw, prop="og:type")
     og_locales = meta_values(raw, prop="og:locale")
-    state.check("meta.title", titles == [f"{title} | {SITE_NAME}"], path, "title is not exact", titles)
+    state.check("meta.title", titles == [f"{title} | {TITLE_SUFFIX}"], path, "title is not exact", titles)
     state.check("meta.h1", h1s == [h1 or title], path, "H1 is not exact", h1s)
     state.check("meta.canonical", canonicals == [canonical], path, "canonical is not exact", canonicals)
     state.check("meta.og_url", og_urls == [canonical], path, "og:url is not exact", og_urls)
-    state.check("meta.og_title", og_titles == [f"{title} | {SITE_NAME}"], path, "og:title is not exact", og_titles)
+    state.check("meta.og_title", og_titles == [f"{title} | {TITLE_SUFFIX}"], path, "og:title is not exact", og_titles)
     state.check("meta.description_pair", len(descriptions) == 1 and descriptions == og_descriptions and bool(descriptions[0]), path, "description and og:description are not one exact pair", {"description": descriptions, "og:description": og_descriptions})
     state.check("meta.og_type", og_types == [og_type], path, "og:type is not exact", og_types)
     state.check("meta.og_locale", og_locales == ["ko_KR"], path, "og:locale is not exact", og_locales)

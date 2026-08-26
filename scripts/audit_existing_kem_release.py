@@ -588,7 +588,7 @@ def audit_site(audit: Audit, source_by_slug: dict[str, dict], groups: dict) -> d
         expected_url = page_url(page)
         canonical = extract_one(r'<link\s+rel="canonical"\s+href="([^"]+)"', source)
         og_url = extract_one(r'<meta\s+property="og:url"\s+content="([^"]+)"', source)
-        title = strip_tags(extract_one(r"<title>(.*?)</title>", source)).removesuffix(" | 와와학습코칭센터")
+        title = strip_tags(extract_one(r"<title>(.*?)</title>", source)).removesuffix(" | 와와학습코칭센터 영어수학 전문학원")
         h1_matches = re.findall(r"<h1\b[^>]*>(.*?)</h1>", source, flags=re.I | re.S)
         h1 = strip_tags(h1_matches[0]) if len(h1_matches) == 1 else ""
         description = extract_one(r'<meta\s+name="description"\s+content="([^"]*)"', source)
