@@ -1,0 +1,168 @@
+/* Page-specific anchor contents for nationwide academy detail pages */
+html {
+  scroll-padding-top: 132px;
+}
+
+.national-page-toc {
+  width: min(calc(100% - 40px), var(--page));
+  max-width: calc(100vw - 40px);
+  margin: 0 auto clamp(42px, 7vw, 68px);
+}
+
+.national-page-toc-panel {
+  display: grid;
+  gap: clamp(20px, 4vw, 34px);
+  min-width: 0;
+  padding: clamp(22px, 4vw, 34px);
+  border: 1px solid var(--ink);
+  background:
+    linear-gradient(135deg, rgba(223, 238, 246, .72), transparent 48%),
+    var(--white);
+  box-shadow: 8px 8px 0 var(--blue-soft);
+}
+
+.national-page-toc-heading {
+  min-width: 0;
+}
+
+.national-page-toc-heading .eyebrow {
+  margin: 0 0 10px;
+}
+
+.national-page-toc-heading strong {
+  display: block;
+  color: var(--ink);
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 900;
+  line-height: 1.24;
+  letter-spacing: -.045em;
+}
+
+.national-page-toc-heading > p:last-child {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+.national-page-toc-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.national-page-toc-list a {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: rgba(255, 253, 249, .88);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  transition: transform .18s ease, border-color .18s ease, background-color .18s ease, color .18s ease;
+}
+
+.national-page-toc-list a:hover {
+  transform: translateY(-1px);
+  border-color: var(--blue);
+  color: var(--ink);
+  background: var(--blue-soft);
+}
+
+.national-page-toc-list a:focus-visible {
+  border-color: var(--blue);
+  outline: 3px solid rgba(49, 87, 213, .3);
+  outline-offset: 2px;
+  color: var(--ink);
+  background: var(--blue-soft);
+}
+
+.national-page-toc-number {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--ink);
+  color: #fff;
+  background: var(--blue);
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.national-page-toc-text {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.national-page-anchor-target {
+  scroll-margin-top: 16px;
+}
+
+.national-page-anchor-target:target {
+  color: var(--blue);
+}
+
+@media (min-width: 700px) {
+  html {
+    scroll-padding-top: 96px;
+  }
+
+  .national-page-toc-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 980px) {
+  .national-page-toc-panel {
+    grid-template-columns: minmax(220px, .3fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 420px) {
+  .national-page-toc {
+    width: min(calc(100% - 26px), var(--page));
+    max-width: calc(100vw - 26px);
+    margin-bottom: 46px;
+  }
+
+  .national-page-toc-panel {
+    padding: 20px 15px;
+    box-shadow: 6px 6px 0 var(--blue-soft);
+  }
+
+  .national-page-toc-heading strong {
+    font-size: 23px;
+  }
+
+  .national-page-toc-list a {
+    padding-inline: 11px;
+    font-size: 12.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .national-page-toc-list a {
+    transition: none;
+  }
+}
