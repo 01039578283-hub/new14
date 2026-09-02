@@ -9,7 +9,7 @@ import random
 import re
 import shutil
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -118,6 +118,14 @@ class HighEnglishProfile:
 
 
 @dataclass(frozen=True)
+class ElementaryEnglishProfile:
+    focus: str
+    source_title: str
+    intents: tuple[HighEnglishIntent, ...]
+    source_markers: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class MiddleEnglishProfile:
     focus: str
     source_title: str
@@ -140,6 +148,14 @@ class HighMathIntent:
 
 @dataclass(frozen=True)
 class HighMathProfile:
+    focus: str
+    source_title: str
+    intents: tuple[HighMathIntent, ...]
+    source_markers: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ElementaryMathProfile:
     focus: str
     source_title: str
     intents: tuple[HighMathIntent, ...]
@@ -288,6 +304,139 @@ HIGH_ENGLISH_INTENTS: tuple[HighEnglishIntent, ...] = (
     ),
 )
 HIGH_ENGLISH_INTENT_BY_CODE = {intent.code: intent for intent in HIGH_ENGLISH_INTENTS}
+
+
+ELEMENTARY_ENGLISH_INTENTS: tuple[HighEnglishIntent, ...] = (
+    HighEnglishIntent(
+        "phonics", "소리·문자 연결", ("파닉스", "알파벳", "소리", "발음", "읽기 시작"),
+        "글자를 보고 소리를 떠올리고 짧은 낱말을 소리 단위로 이어 읽는지",
+        "낯선 낱말을 읽을 때 멈춘 글자와 다시 소리 내어 고친 기록",
+        "글자와 소리를 짝지은 뒤 짧은 낱말을 천천히 이어 읽기",
+        "비슷한 소리 규칙이 담긴 새 낱말도 도움 없이 읽어 보는지",
+        "교재의 읽기 활동과 가정의 짧은 소리 연습을 같은 기준으로 확인하는 방법",
+        "외운 낱말 수보다 처음 보는 낱말을 읽는 과정을 어떻게 확인하는지",
+    ),
+    HighEnglishIntent(
+        "vocabulary", "기초 어휘", ("어휘", "단어", "낱말", "암기", "뜻"),
+        "외운 낱말을 그림·문장·학교 활동에서 다시 만났을 때 뜻을 연결하는지",
+        "단어를 확인한 기록과 문장 속 같은 낱말의 뜻을 떠올린 흔적",
+        "낱말의 뜻과 그림 또는 짧은 예문을 한 묶음으로 익히고 다음 날 다시 찾기",
+        "그림이나 문장 속 위치가 달라져도 해당 낱말의 뜻을 설명하는지",
+        "학교 교재 어휘와 생활 속에서 다시 만난 표현을 함께 누적하는 기준",
+        "암기량이 아니라 문장 속에서 낱말을 다시 알아보는지를 어떻게 확인하는지",
+    ),
+    HighEnglishIntent(
+        "sentence", "문장 읽기", ("문장", "어순", "구조", "직독직해", "해석"),
+        "낱말 뜻을 알아도 짧은 문장의 순서와 의미 덩어리를 연결해 읽는지",
+        "읽다가 멈춘 문장과 낱말 순서를 잘못 짚어 뜻이 달라진 위치",
+        "짧은 문장을 의미 덩어리로 끊어 읽고 그림이나 상황과 연결해 설명하기",
+        "낱말이 일부 바뀐 새 문장에서도 의미 덩어리를 나누어 뜻을 말하는지",
+        "학교 교재의 문장과 평소 읽기 문장을 같은 표시법으로 확인하는 기준",
+        "번역한 답보다 문장 순서를 스스로 짚는 과정을 어떻게 살피는지",
+    ),
+    HighEnglishIntent(
+        "reading", "근거 독해", ("독해", "읽기", "읽기 속도", "다음 글", "사고력", "생각하는 힘", "지문", "내용", "주제", "근거"),
+        "짧은 글을 읽고 누가 무엇을 했는지와 답의 근거 문장을 찾는지",
+        "글의 핵심 문장, 그림 단서와 답을 고른 이유를 표시한 기록",
+        "문장마다 핵심 낱말을 표시하고 질문의 답이 나온 부분을 다시 찾기",
+        "처음 보는 짧은 글에서도 내용 순서와 답의 근거를 설명하는지",
+        "학교 읽기 활동과 평소 새 글 읽기를 분리하되 같은 근거 찾기로 연결하는 기준",
+        "정답 수보다 아이가 답을 찾은 문장을 어떻게 설명하는지 확인하는 방법",
+    ),
+    HighEnglishIntent(
+        "grammar", "기초 문법", ("문법", "어법", "규칙", "시제", "수동태", "비교 표현", "비교급", "최상급", "품사", "형태"),
+        "배운 문장 규칙을 말하는 것과 실제 문장에서 알맞은 형태를 고르는 일이 이어지는지",
+        "처음 쓴 문장과 규칙을 확인한 뒤 스스로 고친 부분",
+        "규칙 한 줄에 맞는 짧은 문장과 고쳐 볼 문장을 나란히 놓고 차이를 설명하기",
+        "낱말이 바뀐 새 문장에서도 같은 규칙을 찾아 고친 이유를 말하는지",
+        "학교 교재의 기초 문장 규칙과 쓰기 활동을 한 흐름으로 확인하는 기준",
+        "규칙 암기와 실제 문장 적용을 어떤 자료로 나누어 확인하는지",
+    ),
+    HighEnglishIntent(
+        "listening", "듣기·말하기", ("듣기", "음원", "들리는", "받아쓰기", "발음"),
+        "소리를 놓친 경우와 표현의 뜻을 몰라 이해하지 못한 경우를 구분하는지",
+        "짧은 음원을 듣고 적은 낱말과 다시 들은 뒤 고친 부분",
+        "한 문장을 짧게 끊어 듣고 핵심 낱말을 표시한 뒤 뜻을 연결하기",
+        "새 음원에서도 익힌 소리와 핵심 표현을 알아듣는지",
+        "학교 듣기 활동과 가정의 짧은 듣기 연습을 같은 기록으로 비교하는 기준",
+        "반복 재생 횟수보다 놓친 소리와 모르는 표현을 어떻게 구분하는지",
+    ),
+    HighEnglishIntent(
+        "speaking", "말하기 적응", ("말하기", "발표", "질문", "대답", "표현", "소리 내어"),
+        "익힌 낱말과 문장을 질문에 맞춰 짧게 말하고 다시 이어 답하는지",
+        "말하다 멈춘 문장과 도움을 받은 표현, 다시 말해 본 기록",
+        "그림이나 익숙한 상황을 보고 핵심 문장 한두 개로 말한 뒤 스스로 고치기",
+        "표현이 조금 달라진 질문에도 같은 뜻을 짧게 말하는지",
+        "학교 말하기 활동과 평소 소리 내어 읽기의 목적을 구분하는 기준",
+        "유창함을 약속하기보다 아이가 말문이 막힌 위치를 어떻게 확인하는지",
+    ),
+    HighEnglishIntent(
+        "writing", "문장 쓰기", ("쓰기", "영작", "작문", "영어 일기", "일기", "서술형", "문장 완성", "영어 문장", "생각한 내용"),
+        "알고 있는 낱말을 순서에 맞게 놓아 짧은 문장을 만들고 다시 읽어 보는지",
+        "처음 쓴 문장에서 빠뜨린 낱말, 어순이 어긋난 부분과 스스로 고친 문장",
+        "그림이나 질문에서 꼭 필요한 낱말을 고른 뒤 짧은 문장을 완성하기",
+        "비슷한 상황에서도 도움 없이 문장을 다시 만들고 고친 이유를 말하는지",
+        "학교 쓰기 활동의 조건과 평소 짧은 문장 연습을 구분해 확인하는 기준",
+        "대신 써 주지 않고 아이가 초안과 수정안을 남기는 과정을 어떻게 돕는지",
+    ),
+    HighEnglishIntent(
+        "school", "학교 영어·단원평가", ("교과서", "학교", "단원", "평가", "시험", "진도"),
+        "학교에서 배우는 단원과 현재 교재의 읽기·쓰기 활동이 어느 지점에서 연결되는지",
+        "학교 교재의 현재 단원과 학습지에서 아이가 설명하지 못한 문장",
+        "학교 단원의 핵심 낱말·문장·활동을 나누고 현재 교재에서 같은 기능을 찾아보기",
+        "표현이 달라진 짧은 활동에서도 배운 낱말과 문장 규칙을 적용하는지",
+        "학교 진도와 평소 기초 연습을 한 계획에 섞지 않고 순서를 정하는 기준",
+        "학교 자료를 학습 계획에 반영할 때 무엇을 먼저 확인하는지",
+    ),
+    HighEnglishIntent(
+        "error", "오답 원인·다시 확인", ("오답", "틀린", "실수", "재시험", "다시", "복습"),
+        "같은 실수를 낱말·문장 읽기·내용 이해·쓰기 중 어느 과정에서 반복하는지",
+        "처음 답한 이유와 설명을 들은 뒤 바꾼 부분, 며칠 뒤 다시 한 기록",
+        "틀린 이유를 한 줄로 남기고 비슷한 새 활동을 며칠 뒤 다시 해 보기",
+        "답을 외운 것이 아니라 새 낱말과 문장에서도 같은 실수가 줄었는지",
+        "학교 단원 기록과 평소 교재의 다시 확인 날짜를 따로 정하는 기준",
+        "틀린 개수보다 먼저 바꿀 학습 행동을 어떤 기록으로 찾는지",
+    ),
+    HighEnglishIntent(
+        "routine", "복습·과제 루틴", ("습관", "태도", "루틴", "계획", "과제", "숙제", "시간 배분", "꾸준", "매일", "기록"),
+        "정한 영어 활동이 실제 완료 기록과 다음 날의 짧은 다시 확인으로 이어지는지",
+        "시작·완료 시각, 읽은 문장과 다음에 물어볼 내용을 적은 주간 기록",
+        "매일 할 최소 분량과 도움을 요청할 항목을 나누고 완료 흔적을 남기기",
+        "한 주 뒤 미완료 이유와 반복된 어려움을 보고 분량을 스스로 조정하는지",
+        "학교 일정이 많은 날과 평소의 최소 영어 활동을 달력에서 구분하는 기준",
+        "과제량보다 완료·다시 확인·계획 수정의 주기를 어떻게 살피는지",
+    ),
+    HighEnglishIntent(
+        "independence", "질문·혼자 설명", ("스스로", "자기주도", "질문", "설명", "혼자", "주도"),
+        "도움을 받은 뒤 아이가 같은 낱말이나 문장을 자기 말로 다시 설명하는지",
+        "도움을 요청한 위치와 설명 뒤 혼자 다시 한 부분",
+        "모르는 지점에 표시하고 질문한 뒤 배운 내용을 짧게 다시 설명하기",
+        "비슷한 새 활동에서 도움을 요청할 시점과 혼자 할 범위를 구분하는지",
+        "가정의 도움과 아이가 직접 수행할 부분을 나누어 확인하는 기준",
+        "부모가 답을 알려 주기보다 아이의 질문과 설명을 어떻게 기록하는지",
+    ),
+    HighEnglishIntent(
+        "next_stage", "초6·중1 전환 준비", ("다음 학년", "새 학년", "입학", "예비", "전환"),
+        "현재 읽기·문장·표현 기초로 다음 학년의 길어진 글과 활동을 혼자 해 볼 준비가 되었는지",
+        "현재 교재에서 혼자 끝낸 범위와 난도를 높인 예시에서 멈춘 위치",
+        "현재 기초를 확인한 뒤 난도를 높인 짧은 글을 읽고 문장을 쓰는 활동으로 한 단계씩 확장하기",
+        "무리한 선행보다 아이가 혼자 읽고 설명하는 범위가 넓어졌는지",
+        "현재 학년의 빈틈 보완과 다음 학년 준비를 두 칸으로 나누는 기준",
+        "앞선 진도보다 다음 단계에서 혼자 수행할 수 있는 범위를 어떻게 확인하는지",
+    ),
+    HighEnglishIntent(
+        "diagnosis", "학습 우선순위", ("진단", "현재 실력", "실력", "점수", "학원 변경", "출발", "기초", "우선순위", "상담", "방향"),
+        "점수나 진도 한 줄이 아니라 듣기·읽기·말하기·쓰기 중 먼저 멈추는 지점을 구분하는지",
+        "현재 교재와 학습지에서 아이의 설명이 멈춘 위치와 다시 해 본 기록",
+        "가장 먼저 막힌 기능 하나를 고르고 짧은 설명·연습·다시 확인의 순서를 정하기",
+        "일주일 뒤 같은 기능의 새 활동에서 아이가 혼자 설명하거나 수행하는지",
+        "학교 활동과 평소 교재에서 같은 어려움이 반복되는지 대조하는 기준",
+        "교재나 분량보다 먼저 바꿀 학습 절차를 어떤 자료로 판단하는지",
+    ),
+)
+ELEMENTARY_ENGLISH_INTENT_BY_CODE = {
+    intent.code: intent for intent in ELEMENTARY_ENGLISH_INTENTS
+}
 
 
 MIDDLE_ENGLISH_INTENTS: tuple[HighEnglishIntent, ...] = (
@@ -558,6 +707,864 @@ HIGH_MATH_INTENTS: tuple[HighMathIntent, ...] = (
     ),
 )
 HIGH_MATH_INTENT_BY_CODE = {intent.code: intent for intent in HIGH_MATH_INTENTS}
+
+
+ELEMENTARY_MATH_INTENTS: tuple[HighMathIntent, ...] = (
+    HighMathIntent(
+        "diagnosis", "학습 출발점", ("진단", "현재 실력", "출발", "상담", "방향", "기초", "맞춤"),
+        "점수나 진도 한 줄이 아니라 연산·개념·문장제 중 아이가 먼저 멈추는 지점을 구분하는지",
+        "현재 교재와 학습지에서 아이의 설명이 멈춘 문제, 도움 뒤 다시 푼 기록",
+        "먼저 막힌 기능 하나를 고르고 설명·짧은 연습·다시 확인의 순서를 정하기",
+        "일주일 뒤 같은 기능의 새 문제를 혼자 시작하고 풀이 이유를 설명하는지",
+        "학교 단원과 평소 교재에서 같은 어려움이 반복되는지 자료별로 대조하는 기준",
+        "진도나 문제 수보다 먼저 바꿀 학습 행동을 어떤 자료로 판단하는지",
+    ),
+    HighMathIntent(
+        "number", "수 감각·연산 원리", ("연산", "계산", "수 감각", "자리값", "받아올림", "받아내림", "구구단"),
+        "계산 절차만 외우지 않고 자릿값과 수가 바뀌는 이유를 말로 설명하는지",
+        "자릿값·받아올림·받아내림을 표시한 첫 계산과 스스로 고친 계산 과정",
+        "수 모형·말·식을 연결한 뒤 같은 원리의 짧은 계산을 다시 풀기",
+        "숫자가 달라진 계산에서도 같은 원리를 설명하고 중간 과정을 빠뜨리지 않는지",
+        "학교 단원의 연산 진도와 평소 기초 계산을 다른 줄에 두고 같은 원리로 확인하는 기준",
+        "속도보다 연산 원리를 이해했는지 어떤 풀이 흔적으로 확인하는지",
+    ),
+    HighMathIntent(
+        "calculation", "계산 과정·검산", ("정확", "실수", "검산", "계산 순서", "부호", "단위", "쉬운 문제"),
+        "풀이 방향은 알지만 계산 순서·단위·중간 기록에서 같은 실수를 반복하는지",
+        "오류가 처음 시작된 계산 줄, 답을 고친 뒤 다시 쓴 과정과 검산 표시",
+        "계산 단계를 한 줄씩 나누고 오류 위치를 표시한 뒤 다른 방법으로 검산하기",
+        "새 계산에서도 같은 오류가 줄고 스스로 검산할 위치를 고르는지",
+        "단원평가 전 정확도 점검과 평소 계산 습관을 서로 다른 날짜에 확인하는 기준",
+        "단순 실수라고 넘기지 않고 반복 오류의 시작 단계를 어떻게 기록하는지",
+    ),
+    HighMathIntent(
+        "word_problem", "문장제 조건·식 세우기", ("문장제", "조건", "응용", "문제 해결", "문제해결", "식", "질문"),
+        "문장에서 주어진 수·관계·구할 것을 구분해 그림이나 식으로 바꾸는지",
+        "밑줄 친 조건, 처음 그린 그림과 세운 식에서 빠뜨린 정보",
+        "질문을 한 문장으로 바꾸고 필요한 수와 관계를 골라 그림·식으로 나타내기",
+        "생활 장면과 수가 달라진 새 문장제에서도 필요한 조건만 골라 식을 세우는지",
+        "학교 단원 문장제와 평소 응용 문제를 같은 조건 표시법으로 비교하는 기준",
+        "정답 풀이를 보여 주기 전에 아이가 조건을 식으로 바꾸는 과정을 어떻게 살피는지",
+    ),
+    HighMathIntent(
+        "fraction", "분수·소수 이해", ("분수", "소수", "비율", "전체", "부분", "수직선"),
+        "전체와 부분의 관계를 그림·수직선·식으로 오가며 설명하는지",
+        "분수나 소수를 그림과 수직선에 표시한 기록, 값이 달라진 지점",
+        "같은 양을 그림·말·식 세 가지로 나타내고 표현 사이의 관계를 설명하기",
+        "모양이나 수가 달라져도 같은 크기와 전체·부분 관계를 찾아내는지",
+        "학교 단원의 분수·소수 활동과 생활 속 양 비교를 한 기준으로 연결하는 방법",
+        "계산법 암기와 분수·소수의 의미 이해를 어떤 자료로 나누어 확인하는지",
+    ),
+    HighMathIntent(
+        "geometry", "도형·측정", ("도형", "각도", "넓이", "둘레", "길이", "측정", "단위", "그림"),
+        "도형의 성질과 측정 단위를 구분하고 주어진 조건을 그림에 옮기는지",
+        "도형에 표시한 길이·각도·단위와 처음 세운 넓이·둘레 식",
+        "문제 조건을 그림에 직접 표시하고 사용한 도형 성질과 단위를 한 줄로 적기",
+        "방향·크기·수치가 바뀐 새 도형에서도 필요한 성질을 골라 설명하는지",
+        "학교 측정 활동과 교재의 도형 문제를 그림 표시와 단위 확인으로 연결하는 기준",
+        "공식을 알려 주기 전에 아이가 도형 조건을 시각화하는 과정을 어떻게 확인하는지",
+    ),
+    HighMathIntent(
+        "concept", "개념 설명·적용", ("개념", "원리", "이해", "설명", "기본", "공식", "생각하는 힘"),
+        "풀이 방법의 이름만 외우지 않고 왜 그 방법을 쓰는지 자기 말로 설명하는지",
+        "단원 핵심어를 설명한 메모와 대표 문제에서 그 개념을 선택한 이유",
+        "개념을 그림이나 말로 설명한 뒤 조건이 조금 달라진 대표 문제에 적용하기",
+        "숫자와 표현이 바뀐 새 문제에서도 같은 개념을 골라 사용 이유를 말하는지",
+        "학교 교과서 개념과 평소 교재의 대표 문제를 같은 설명 질문으로 확인하는 기준",
+        "개념 암기와 실제 문제 적용을 어떤 질문과 풀이 기록으로 구분하는지",
+    ),
+    HighMathIntent(
+        "error", "오답 원인·다시 풀기", ("오답", "틀린", "복습", "재풀이", "다시", "피드백", "빈틈"),
+        "틀린 이유를 개념·조건·계산·단위 중 어디에서 시작됐는지 구분하는지",
+        "첫 풀이, 오류 원인 표시와 해설을 덮고 며칠 뒤 다시 푼 과정",
+        "오답 원인을 한 가지로 적고 같은 날 수정한 뒤 비슷한 새 문제를 며칠 뒤 풀기",
+        "정답을 기억한 것이 아니라 새 문제에서 같은 실수가 줄고 풀이 이유가 달라졌는지",
+        "학교 단원 오답과 평소 교재의 다시 확인 날짜를 따로 정하는 기준",
+        "오답 기록의 분량보다 원인 표시와 새 문제 재확인을 어떻게 연결하는지",
+    ),
+    HighMathIntent(
+        "written", "풀이 과정·서술", ("서술형", "풀이 과정", "풀이과정", "과정", "설명", "논리", "노트"),
+        "답만 적지 않고 사용한 조건과 식의 이유를 순서대로 남기는지",
+        "처음 쓴 풀이에서 생략한 조건·식·단위와 스스로 고친 기록",
+        "조건 표시·사용한 개념·계산·답의 의미를 네 단계로 나누어 적기",
+        "유사 문제에서도 풀이 단계를 빠뜨리지 않고 각 식의 이유를 설명하는지",
+        "학교 서술형 활동과 평소 풀이 노트를 같은 단계 기록으로 확인하는 기준",
+        "정답뿐 아니라 풀이 순서와 빠진 조건을 어떤 기준으로 확인하는지",
+    ),
+    HighMathIntent(
+        "school", "학교 단원·단원평가", ("학교", "교과서", "단원", "단원평가", "시험", "새 학기", "학기"),
+        "학교에서 배우는 단원과 현재 교재의 개념·연산·문장제 활동이 어디서 연결되는지",
+        "학교 진도표·교과서 표시와 현재 교재에서 설명이 멈춘 문제",
+        "학교 단원의 핵심 개념·연산·문장제를 나누고 현재 교재에서 같은 기능 찾기",
+        "숫자나 표현이 달라진 단원 문제에서도 배운 개념과 풀이 이유를 설명하는지",
+        "학교 진도와 평소 기초 연습을 한 계획에 섞지 않고 완료일을 나누는 기준",
+        "학교 자료를 학습 계획에 반영할 때 무엇을 먼저 확인하는지",
+    ),
+    HighMathIntent(
+        "routine", "과제·복습 루틴", ("습관", "루틴", "계획", "과제", "숙제", "꾸준", "기록", "학습코칭", "관리"),
+        "정한 수학 활동이 실제 완료 기록과 오답 재확인으로 이어지는지",
+        "주간 계획표, 시작·완료 시각과 다음 날 남은 질문·다시 푼 문제",
+        "새 문제·오답 다시 풀기·질문을 다른 칸에 두고 완료 흔적을 한 줄로 남기기",
+        "한 주 뒤 미완료 이유와 반복 오답을 보고 분량과 도움 요청 시점을 조정하는지",
+        "학교 일정이 많은 날과 평소 최소 수학 활동을 달력에서 구분하는 기준",
+        "문제 수보다 완료·질문·다시 확인·계획 수정의 주기를 어떻게 살피는지",
+    ),
+    HighMathIntent(
+        "independence", "질문·혼자 설명", ("스스로", "자기주도", "질문", "혼자", "참여", "집중", "자신감"),
+        "도움을 받은 뒤 같은 원리와 풀이 순서를 아이가 자기 말로 다시 설명하는지",
+        "도움을 요청한 위치, 설명 뒤 혼자 다시 푼 문제와 남은 질문",
+        "모르는 줄에 표시하고 질문한 뒤 배운 내용을 그림·말·식 중 하나로 다시 설명하기",
+        "비슷한 새 문제에서 도움을 요청할 시점과 혼자 끝낼 범위를 구분하는지",
+        "가정의 도움과 아이가 직접 수행할 부분을 나누어 확인하는 기준",
+        "답을 알려 주기보다 아이의 질문과 설명을 어떤 기록으로 남기는지",
+    ),
+    HighMathIntent(
+        "pace", "풀이 시간·검산", ("시간", "속도", "시간 배분", "시간배분", "끝까지", "집중", "시험 준비"),
+        "쉬운 계산에 오래 머물거나 어려운 문제를 붙잡아 검산할 시간을 잃는지",
+        "문제별 시작·종료 시각, 건너뛴 문제와 다시 돌아온 순서",
+        "바로 풀 문제·표시 후 돌아올 문제·마지막에 검산할 문제로 나누어 짧은 세트 풀기",
+        "정확도를 유지하면서 정한 시각에 문제를 넘기고 검산할 시간을 남기는지",
+        "단원평가 전 풀이 시간과 평소의 꼼꼼한 개념 설명 시간을 따로 연습하는 기준",
+        "빨리 풀기보다 문제 선택과 검산 시간을 어떤 기록으로 조정하는지",
+    ),
+    HighMathIntent(
+        "transition", "초6·중1 전환 준비", ("예비중", "예비 중", "중1", "중학교", "첫 시험", "입학", "전환"),
+        "초등 연산·분수·문장제 기초로 중학교의 길어진 조건과 풀이 과정을 시작할 준비가 되었는지",
+        "현재 초등 교재에서 혼자 푼 범위와 중학교 예시 문제에서 처음 멈춘 위치",
+        "초등 기초를 확인한 뒤 중학교 예시 문제의 조건을 표시하고 첫 식까지 세워 보기",
+        "무리한 선행보다 길어진 조건을 읽고 풀이 이유를 설명하는 범위가 넓어졌는지",
+        "현재 초등 단원의 빈틈 보완과 입학 뒤 실제 진도 확인을 두 칸으로 나누는 기준",
+        "선행 분량보다 다음 단계에서 혼자 시작할 수 있는 범위를 어떻게 확인하는지",
+    ),
+)
+ELEMENTARY_MATH_INTENT_BY_CODE = {
+    intent.code: intent for intent in ELEMENTARY_MATH_INTENTS
+}
+
+
+ELEMENTARY_MATH_SAFE_FOCUS_OVERRIDES: dict[str, str] = {
+    "구의동": "단원평가 준비를 풀이 기록으로 시작하는 방법",
+    "북가좌동": "제한 시간 안에서 풀이와 검산을 나누는 방법",
+    "권선동": "초등 개념 누락과 다음 단원 연결을 점검하는 방법",
+    "금오동": "단원평가와 평소 오답 기록을 연결하는 공부법",
+    "이충동": "다음 학년 수학을 앞두고 기초 개념을 점검하는 방법",
+    "수곡동": "단원평가 준비를 시작하는 학습 흐름",
+    "도남지구": "단원평가 준비와 학습 습관을 함께 점검하는 방법",
+    "복현동": "단원 이해와 학생별 학습 기록을 함께 살피는 방법",
+    "침산동": "기초 개념부터 학교 단원까지 이어 보는 학습 순서",
+    "칠성동": "방학에도 이어지는 교과 진도와 복습 점검",
+    "수성동": "기초 개념부터 학교 과제까지 연결하는 학습 기록",
+    "만촌동": "개념 이해에서 학교 학습으로 이어지는 점검 방법",
+    "신천동": "개념 집중 학습으로 풀이 참여를 늘리는 방법",
+    "달동": "겨울방학 초등 수학의 기초와 풀이 습관 점검",
+}
+
+
+ELEMENTARY_MATH_TRANSITION_FOCUS_OVERRIDES: dict[str, str] = {
+    "삼각산동": "초등 수학의 빈틈을 확인해 중1 첫 학습으로 연결하는 방법",
+    "보라동": "초등 수학 기록으로 다음 학교 단계의 준비 범위를 찾는 방법",
+    "풍덕천동": "현재 초등 수학 노트로 다음 단계의 기초를 점검하는 방법",
+    "영덕동": "초등 수학의 개념 설명을 다음 단계 문제로 연결하는 방법",
+    "부발읍": "초등 수학의 빈틈을 확인하며 다음 학교 단계를 준비하는 방법",
+    "상남동": "초등 수학의 빈틈부터 중1 첫 학습까지 점검하는 방법",
+}
+
+
+ELEMENTARY_MATH_FOCUS_CLEANUP_OVERRIDES: dict[str, str] = {
+    "일직동": "학생 자료로 개념 이해와 풀이 과정을 구분하는 방법",
+    "해운대 중동": "풀이 기록으로 학생별 학습 순서를 확인하는 방법",
+    "원주혁신도시": "주말 학습 기록으로 질문과 검산 순서를 정하는 방법",
+    "석사동": "공부의 출발점을 다시 잡는 학습 기록 점검",
+    "송탄": "학생별 오답 피드백을 학습 기록으로 확인하는 방법",
+    "약대동": "취약점을 찾는 학생별 학습 점검",
+    "관교동": "현재 진도로 시작하는 학생별 학습 점검",
+    "두정동": "개념 이해와 풀이 정확도를 함께 점검하는 방법",
+    "시흥동": "기초 개념부터 풀이 변화까지 차근차근 확인하는 방법",
+    "서정동": "공부 과정과 학습 변화를 기록으로 확인하는 방법",
+    "봉담2지구": "틀린 문제를 다시 풀며 원인을 확인하는 복습",
+    "갈산동": "학습 기록으로 이해도 변화를 확인하는 방법",
+    "구월동": "빠른 진도보다 개념 이해를 중심에 두는 학습",
+    "신월동": "개념 설명과 풀이 과정을 함께 키우는 학습",
+    "여수동": "진단 기록에서 시작하는 학생별 학습 점검",
+    "탄방동": "학생별 학습 점검으로 기초를 다지는 방법",
+    "쌍용동": "기초 확인부터 장기 학습 계획까지 잇는 방법",
+    "동패동": "학습 결과와 과정을 함께 보는 학생별 점검",
+    "병점": "첫 학습 점검에서 시작하는 학생별 계획",
+    "다산동": "기초 개념과 학습 습관을 함께 점검하는 방법",
+    "고현동": "공부 습관과 학생별 학습 기록을 함께 점검하는 방법",
+    "성화동": "결과보다 과정을 살피는 장기 학습 계획",
+    "행신동": "겨울방학 수학 기초와 복습 흐름을 점검하는 방법",
+    "염리동": "이용 조건과 학습 방향을 함께 확인하는 방법",
+    "퇴계동": "방학 학습 계획으로 복습 방향을 세우는 방법",
+    "장량동": "시험 후 점수보다 풀이 과정을 살피는 복습",
+    "연동": "시험 범위가 짧아도 학습 방향을 정하는 방법",
+    "단계동": "시험 불안을 줄이기 위한 장기 학습 계획",
+    "후평동": "아이의 속도에 맞춰 학습 과정을 점검하는 방법",
+    "정평동": "학생별 진단 기록으로 학습 순서를 정하는 방법",
+    "옥계동": "분량을 늘리기보다 집중 흐름을 살피는 방법",
+    "첨단지구": "자기 주도 학습을 돕는 계획과 점검",
+    "중화산동": "공부의 빈틈을 찾는 학생별 학습 점검",
+    "망월동": "학습 성향을 확인해 기초부터 시작하는 방법",
+    "경산사동": "기본 문제에서 변형 문제까지 이어 보는 학습",
+    "금곡동": "현재 수준에 맞는 교재부터 다시 시작하는 방법",
+    "도안동": "상담 전에 확인할 학습 기록과 이용 조건",
+    "신당동": "아이의 현재 학습 상태부터 차근히 살피는 방법",
+    "지족동": "개념 이해부터 풀이 점검까지 잇는 학생별 학습 방법",
+    "온천동": "시험 전 학습 기록을 차례로 점검하는 방법",
+    "영천동": "기초부터 다시 배우고 반복해 확인하는 방법",
+    "탄현동": "빠른 진도보다 기본기를 먼저 점검하는 방법",
+    "남가좌동": "서술형 풀이까지 생각 과정을 확인하는 방법",
+    "부천 중동": "기초 개념을 다음 문제 풀이로 연결하는 방법",
+    "신월성": "기초 확인부터 장기 계획까지 방향을 잡는 방법",
+    "호평동": "학생별 개념 이해와 공부 습관을 살피는 방법",
+    "거제동": "기초 확인부터 시험 준비까지 순서를 정하는 방법",
+    "고잔동": "공부 효율을 살피는 학생별 학습 점검",
+    "교하": "공부 시간 점검부터 개념 이해까지 이어 보는 방법",
+    "금릉": "학습 진도와 공부 습관을 함께 점검하는 방법",
+    "금촌동": "학습 과제의 완료 과정까지 점검하는 방법",
+    "김량장동": "풀이 깊이와 학습 결과를 함께 살피는 방법",
+    "내삼미동": "막힌 문제를 다시 시작하는 힘을 기르는 방법",
+    "노은동": "주간 학습 점검으로 공부 습관을 살피는 방법",
+    "논현동": "단원평가 뒤 오답 분석과 다음 학습을 잇는 방법",
+    "대봉동": "생각하는 과정을 시험 전후 기록으로 확인하는 방법",
+    "돈암동": "개념 이해부터 문제 해결까지 차근차근 잇는 방법",
+    "도안신도시": "단계별 자기 주도 학습을 위한 점검 방법",
+    "복산동": "시험 성적보다 먼저 볼 학습 기록",
+    "비래동": "현재 학습 진척도에 맞춰 복습 순서를 정하는 방법",
+    "사직동": "시험 시간 점검과 풀이 순서를 함께 확인하는 방법",
+    "산곡동": "공부의 출발점을 확인하고 기본선을 세우는 방법",
+    "산월동": "아이의 현재 수준에 맞춰 학습 분량을 정하는 방법",
+    "상인동": "현재 진도에서 시작하는 학생별 학습 점검",
+    "상현동": "개념 기록부터 학습 일지까지 꼼꼼히 확인하는 방법",
+    "석우동": "현재 학습 준비도를 확인하는 방법",
+    "성복동": "학습 일정부터 꼼꼼히 점검하는 방법",
+    "송도": "기초 확인부터 학습 전략까지 세우는 방법",
+    "송정동": "개념 이해부터 시험 준비까지 살피는 학생별 점검",
+    "수창동": "시험 대비의 우선순위를 세우는 학습 점검",
+    "식사동": "개념 이해와 현재 진도를 함께 확인하는 방법",
+    "운정신도시": "학습 일정 점검으로 기초부터 차근차근 시작하는 방법",
+    "울산 삼산동": "개념 이해부터 시험 계획까지 잇는 방법",
+    "장성동": "반복 학습으로 기초를 다지는 방법",
+    "장항동": "수업 뒤 복습까지 이어 보는 방법",
+    "죽백동": "기초 기록부터 학습 변화까지 확인하는 방법",
+    "진관동": "공부 공간과 학습 흐름을 함께 확인하는 방법",
+    "토당동": "개념 이해부터 문제 해결까지 연결하는 방법",
+    "호매실동": "학습 기록을 분석해 다음 방향을 찾는 방법",
+    "화명동": "속도보다 풀이 과정을 살피는 학습 점검",
+    "화봉동": "시험 전후 점검과 풀이 습관을 함께 살피는 방법",
+    "배곧": "아이의 현재 진도와 학습 기록을 함께 살피는 방법",
+}
+
+
+ELEMENTARY_MATH_INTENT_OVERRIDES: dict[str, tuple[str, str, str, str]] = {
+    "구의동": ("school", "written", "error", "routine"),
+    "북가좌동": ("pace", "calculation", "written", "error"),
+    "달동": ("diagnosis", "routine", "concept", "calculation"),
+}
+
+
+def repair_elementary_math_focus(value: str) -> str:
+    value = clean(value)
+    repairs = (
+        ("학습 학습", "학습"),
+        ("수학 수학", "수학"),
+        ("점검 점검", "점검"),
+        ("관리 관리", "관리"),
+        ("방법 방법", "방법"),
+        ("초등 과정 초등 과정", "초등 과정"),
+        ("공부 공부", "공부"),
+        ("풀이 풀이", "풀이"),
+        ("학원학습", "학원 학습"),
+        ("학습클리닉", "학습 점검"),
+        ("학습목표", "학습 목표"),
+        ("학습성취도", "학습 성취도"),
+        ("학습취약점", "학습 취약점"),
+        ("학습반복", "학습 반복"),
+        ("시험전략", "시험 전략"),
+        ("시험복습", "시험 복습"),
+        ("점검가", "점검이"),
+        ("점검로", "점검으로"),
+        ("첫 학습부터 학습 흐름", "첫 학습부터 공부 흐름"),
+        ("수학 학습으로 학습 방향", "수학 기록으로 학습 방향"),
+    )
+    for before, after in repairs:
+        value = value.replace(before, after)
+    return re.sub(r"\s+", " ", value).strip(" ,·|:-")
+
+
+def safe_elementary_math_phrase(value: str, locality: str = "") -> str:
+    """Keep an elementary-math source angle without copying unsafe claims."""
+
+    value = clean(value)
+    if locality:
+        locality_aliases = {locality}
+        if locality == "부천 상동":
+            locality_aliases.add("상동")
+        for alias in sorted(locality_aliases, key=len, reverse=True):
+            value = re.sub(rf"(?<![가-힣]){re.escape(alias)}(?![가-힣])", " ", value)
+    value = re.sub(r"초등\s*수학학원(?:에서|으로|의)?", " ", value)
+    replacements = (
+        (r"예비\s*고1\s*영어|고등\s*영어|영어", "초등 수학"),
+        (r"고등학생|고등학교|고등|수능|모의고사|전국연합", "학교 단원"),
+        (r"중1\s*첫\s*시험|중간고사|기말고사|내신", "단원평가"),
+        (r"예비\s*중학생|중학교\s*입학\s*전|중등\s*수학|중학교\s*수학", "다음 학교 단계 수학"),
+        (r"중학생|중학교|중등", "다음 학교 단계"),
+        (r"입시(?:종합관리|로드맵|분석|설계|계획|평가|준비|전략|상담)?", "장기 학습 계획"),
+        (r"성적\s*(?:향상|상승)|점수\s*(?:향상|상승)|상위권|완성", "학습 변화 확인"),
+        (r"방학\s*특강|방학\s*집중반|정규반|시험\s*대비반|특강\s*수업", "방학 학습 계획"),
+        (r"1\s*:\s*1|일대일|개인\s*과외|소수\s*정예", "학생별 학습 점검"),
+        (r"학원\s*개별\s*지도|개별\s*지도", "학생별 학습 점검"),
+        (r"(?:평일|주말)?\s*집중반", "집중 학습 계획"),
+        (r"화상\s*수업|녹화\s*수업|온라인\s*수업|대면\s*수업|오전\s*수업|주말\s*수업|그룹\s*수업", "수학 학습"),
+        (r"맞춤(?:형)?\s*(?:코칭|학습|관리|수업)?", "학생별 학습 점검"),
+        (r"밀착\s*(?:관리|코칭)", "학습 과정 점검"),
+        (r"학원비", "비용과 이용 조건"),
+        (r"와와학습코칭센터(?:\s*\S*점)?", "학습 상담"),
+        (r"학습코칭", "학습 점검"),
+        (r"코칭", "피드백"),
+        (r"수업", "학습"),
+    )
+    for pattern, replacement in replacements:
+        value = re.sub(pattern, replacement, value)
+    compounds = (
+        ("문제풀이", "문제 풀이"), ("풀이과정", "풀이 과정"),
+        ("개념이해", "개념 이해"), ("개념설명", "개념 설명"),
+        ("연산실수", "연산 실수"), ("계산실수", "계산 실수"),
+        ("오답관리", "오답 점검"), ("오답복습", "오답 복습"),
+        ("학습관리", "학습 기록 점검"), ("학습기록", "학습 기록"),
+        ("학습습관", "학습 습관"), ("학습계획", "학습 계획"),
+        ("학습방향", "학습 방향"), ("학습루틴", "학습 루틴"),
+        ("자기주도", "자기 주도"), ("단원평가", "단원평가"),
+        ("시간배분", "시간 배분"), ("학교과제", "학교 과제"),
+    )
+    for before, after in compounds:
+        value = value.replace(before, after)
+    value = repair_elementary_math_focus(value)
+    forbidden = re.compile(r"(?:고[123]|고등|고등학생|고등학교|수능|모의고사|입시|영어|국어)")
+    if not value or len(value) > 64 or forbidden.search(value):
+        return "초등 수학의 개념과 풀이 습관을 자료로 확인하는 방법"
+    return value
+
+
+def _elementary_math_keyword_score(text: str, keyword: str) -> int:
+    compact = re.sub(r"\s+", "", text)
+    marker = re.sub(r"\s+", "", keyword)
+    if marker == "소수" and "소수정예" in compact:
+        compact = compact.replace("소수정예", "")
+    return compact.count(marker)
+
+
+def is_safe_elementary_math_source_unit(value: str, locality: str) -> bool:
+    """Reject a contaminated source unit instead of laundering it into math copy."""
+
+    value = clean(value)
+    locality_aliases = {locality}
+    if locality == "부천 상동":
+        locality_aliases.add("상동")
+    for alias in sorted(locality_aliases, key=len, reverse=True):
+        value = value.replace(alias, " ")
+    compact = re.sub(r"\s+", " ", value).strip()
+    if not compact:
+        return False
+    hard_contamination = re.compile(
+        r"(?:영어|국어|과학\s*(?:과목|학습|수업|문제|시험|교재)?|"
+        r"예비\s*고1|고등(?:학교|학생|과정|\s*수학)?|(?<![0-9A-Za-z가-힣])고[1-3](?![0-9A-Za-z가-힣])|"
+        r"수능|모의고사|전국연합|학력평가|입시|대입|수시|정시|토익|토플|아이엘츠)"
+    )
+    if hard_contamination.search(compact):
+        return False
+    if locality not in ELEMENTARY_MATH_TRANSITION_FOCUS_OVERRIDES and re.search(
+        r"(?:예비\s*중학생|중학생|중학교|중등|(?<![0-9A-Za-z가-힣])중1(?![0-9A-Za-z가-힣]))",
+        compact,
+    ):
+        return False
+    unsupported_operation = re.compile(
+        r"(?:1\s*:\s*1|일대일|소수\s*정예|온라인\s*수업|화상\s*수업|대면\s*수업|"
+        r"오전\s*수업|주말\s*수업|그룹\s*수업|학원\s*개별\s*지도|개별\s*지도|"
+        r"(?:평일|주말)?\s*집중반|차량\s*운행|주차\s*(?:가능|공간)|학원비)"
+    )
+    if unsupported_operation.search(compact):
+        return False
+    unsupported_outcome = re.compile(
+        r"(?:성적|점수)\s*(?:향상|상승)|상위권|성적\s*완성|결과\s*보장|성과\s*보장"
+    )
+    return not unsupported_outcome.search(compact)
+
+
+def elementary_math_profile(raw: str, locality: str) -> ElementaryMathProfile:
+    h1_values = source_tag_texts(raw, "h1")
+    if not h1_values:
+        raise ValueError(f"{locality}: elementary Math source H1 missing")
+    source_title = h1_values[0]
+    focus = ELEMENTARY_MATH_SAFE_FOCUS_OVERRIDES.get(
+        locality,
+        ELEMENTARY_MATH_TRANSITION_FOCUS_OVERRIDES.get(
+            locality,
+            ELEMENTARY_MATH_FOCUS_CLEANUP_OVERRIDES.get(
+                locality, safe_elementary_math_phrase(source_title, locality)
+            ),
+        ),
+    )
+    strong_values = source_tag_texts(raw, "strong")
+    h3_values = [re.sub(r"^\d+\.\s*", "", value) for value in source_tag_texts(raw, "h3")]
+    li_values = source_tag_texts(raw, "li")
+    parts: list[tuple[str, int]] = [(focus, 36)]
+    parts.extend(
+        (safe_elementary_math_phrase(value), 5)
+        for value in strong_values
+        if is_safe_elementary_math_source_unit(value, locality)
+    )
+    parts.extend(
+        (safe_elementary_math_phrase(value), 2)
+        for value in h3_values[-4:]
+        if is_safe_elementary_math_source_unit(value, locality)
+    )
+    parts.extend(
+        (safe_elementary_math_phrase(value), 1)
+        for value in li_values
+        if is_safe_elementary_math_source_unit(value, locality)
+    )
+    scores = {
+        intent.code: sum(
+            weight * sum(_elementary_math_keyword_score(text, keyword) for keyword in intent.keywords)
+            for text, weight in parts
+        )
+        for intent in ELEMENTARY_MATH_INTENTS
+    }
+    forced_code: str | None = None
+    safe_compact = re.sub(r"\s+", "", focus)
+    if locality in ELEMENTARY_MATH_TRANSITION_FOCUS_OVERRIDES:
+        forced_code = "transition"
+    else:
+        forced_markers = (
+            ("fraction", ("분수", "소수", "수직선")),
+            ("geometry", ("도형", "각도", "넓이", "둘레", "측정")),
+            ("word_problem", ("문장제", "조건", "식세우기")),
+            ("written", ("서술형", "풀이과정")),
+            ("calculation", ("검산", "계산실수", "받아올림", "받아내림")),
+            ("school", ("단원평가", "교과서", "학교단원")),
+        )
+        for code, markers in forced_markers:
+            if any(marker in safe_compact for marker in markers):
+                forced_code = code
+                break
+    ranked = sorted(
+        (intent for intent in ELEMENTARY_MATH_INTENTS if intent.code != "transition"),
+        key=lambda intent: (-scores[intent.code], intent.code),
+    )
+    if locality in ELEMENTARY_MATH_INTENT_OVERRIDES:
+        chosen = tuple(
+            ELEMENTARY_MATH_INTENT_BY_CODE[code]
+            for code in ELEMENTARY_MATH_INTENT_OVERRIDES[locality]
+        )
+    else:
+        primary = (
+            ELEMENTARY_MATH_INTENT_BY_CODE[forced_code]
+            if forced_code
+            else ranked[0] if scores[ranked[0].code] > 0
+            else ELEMENTARY_MATH_INTENT_BY_CODE["diagnosis"]
+        )
+        selected: list[HighMathIntent] = [primary]
+        selected.extend(
+            intent for intent in ranked
+            if intent not in selected and scores[intent.code] > 0
+        )
+        fallback_codes = (
+            "diagnosis", "concept", "number", "word_problem", "calculation",
+            "error", "school", "routine", "written", "independence",
+            "fraction", "geometry", "pace",
+        )
+        start = stable_int(f"{locality}|{focus}", "elementary-math-intent-fill") % len(fallback_codes)
+        selected.extend(
+            ELEMENTARY_MATH_INTENT_BY_CODE[fallback_codes[(start + offset) % len(fallback_codes)]]
+            for offset in range(len(fallback_codes))
+            if ELEMENTARY_MATH_INTENT_BY_CODE[fallback_codes[(start + offset) % len(fallback_codes)]] not in selected
+        )
+        chosen = tuple(selected[:4])
+    focus = repair_elementary_math_focus(
+        normalize_particle_joins(focus, tuple(intent.label for intent in chosen))
+    )
+    return ElementaryMathProfile(
+        focus=focus,
+        source_title=source_title,
+        intents=chosen,
+        source_markers=tuple(intent.label for intent in chosen),
+    )
+
+
+def elementary_math_particle_tokens(profile: ElementaryMathProfile) -> tuple[str, ...]:
+    values: list[str] = [profile.focus, *profile.source_markers]
+    for intent in profile.intents:
+        values.extend((intent.label, intent.concern, intent.evidence, intent.action,
+                       intent.checkpoint, intent.exam_use, intent.consult_question))
+    return tuple(dict.fromkeys(value for value in values if value))
+
+
+def naturalize_elementary_math_text(value: str, profile: ElementaryMathProfile) -> str:
+    value = normalize_particle_joins(value, elementary_math_particle_tokens(profile))
+    particle_pairs = {
+        "은": ("은", "는"), "는": ("은", "는"),
+        "이": ("이", "가"), "가": ("이", "가"),
+        "을": ("을", "를"), "를": ("을", "를"),
+        "과": ("과", "와"), "와": ("과", "와"),
+    }
+
+    def repair_quoted_particle(match: re.Match[str]) -> str:
+        phrase, current = match.group(1), match.group(2)
+        final_particle, open_particle = particle_pairs[current]
+        return f"‘{phrase}’{particle_for(phrase, final_particle, open_particle)}"
+
+    value = re.sub(
+        r"‘([^’]+)’(은|는|이|가|을|를|과|와)",
+        repair_quoted_particle,
+        value,
+    )
+    repairs = (
+        ("과정를", "과정을"), ("점검를", "점검을"),
+        ("기록를", "기록을"), ("문제과", "문제와"),
+        ("자료과", "자료와"), ("방법를", "방법을"),
+        ("학습 학습", "학습"), ("문제 문제", "문제"),
+        ("확인 확인", "확인"), ("다시 다시", "다시"),
+        ("학습부터 학습", "학습부터 다음 단계"),
+        ("학습으로 학습", "학습 기록으로 학습"),
+        ("문제으로", "문제로"),
+    )
+    for before, after in repairs:
+        value = value.replace(before, after)
+    return clean(value)
+
+
+def naturalize_elementary_math_tree(value: object, profile: ElementaryMathProfile) -> object:
+    if isinstance(value, str):
+        return naturalize_elementary_math_text(value, profile)
+    if isinstance(value, list):
+        return [naturalize_elementary_math_tree(item, profile) for item in value]
+    if isinstance(value, tuple):
+        return tuple(naturalize_elementary_math_tree(item, profile) for item in value)
+    if isinstance(value, dict):
+        return {key: naturalize_elementary_math_tree(item, profile) for key, item in value.items()}
+    return value
+
+
+def elementary_math_student_type(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> str:
+    locality = str(center["locality"])
+    primary, secondary = profile.intents[:2]
+    return stable_pick(seed, "elementary-math-student-v1", (
+        f"{locality}에서 {primary.label}은 배웠지만 새 문제에서 {secondary.label}까지 혼자 이어 가기 어려운 초등학생",
+        f"정답 수보다 {primary.label}의 풀이 이유와 {secondary.label}의 다시 확인 기록을 함께 살펴야 하는 {locality} 초등학생",
+        f"학교 단원과 현재 교재 사이에서 {primary.label}·{secondary.label}의 우선순위를 정해야 하는 {locality} 초등학생",
+        f"풀이를 시작할 수는 있으나 {primary.label}의 설명과 {secondary.label}의 검산 흔적이 일정하지 않은 {locality} 초등학생",
+        f"많은 문제보다 {primary.label} 한 가지 행동을 실행하고 {secondary.label}을 며칠 뒤 다시 확인할 필요가 있는 {locality} 초등학생",
+        f"현재 수학 자료에서 {primary.label}과 {secondary.label}이 각각 어디서 막히는지 구분해야 하는 {locality} 초등학생",
+        f"도움을 받은 문제와 혼자 푼 문제를 나누어 {primary.label}·{secondary.label}의 출발점을 찾고 싶은 {locality} 초등학생",
+        f"주간 계획을 문제 수가 아니라 {primary.label} 실행과 {secondary.label} 재확인으로 바꾸려는 {locality} 초등학생",
+    ))
+
+
+def elementary_math_meta_description(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+) -> str:
+    title = f"{center['locality']} {config.label}"
+    primary, secondary = profile.intents[:2]
+    candidates = (
+        f"{title} 선택 전 {profile.focus}, {primary.label}과 {secondary.label}을 확인할 풀이 자료, 학교 단원과 센터 정보를 살펴보세요.",
+        f"{title}에서 {primary.label}과 {secondary.label}의 출발점을 찾는 방법, 7일 학습 기록과 확인된 센터·가능 학년 정보를 정리했습니다.",
+        f"{title} 상담 전 {profile.focus}, 최근 풀이 기록을 읽는 기준과 학교 단원·복습 순서, 센터 확인 정보를 안내합니다.",
+        f"{title}의 {primary.label}·{secondary.label} 점검 자료, 새 문제 재확인 방법과 학교·센터 사실을 한 페이지에서 확인하세요.",
+    )
+    for candidate in candidates:
+        candidate = naturalize_elementary_math_text(candidate, profile)
+        if 70 <= len(candidate) <= 100:
+            return candidate
+    fallback = naturalize_elementary_math_text(
+        f"{title}에서 {primary.label}과 {secondary.label}을 실제 풀이로 확인하고 7일 실행안, 학교 단원과 센터·가능 학년 정보를 비교하는 방법을 안내합니다.",
+        profile,
+    )
+    if not 70 <= len(fallback) <= 100:
+        raise ValueError(f"elementary Math meta description invalid: {title}: {len(fallback)}")
+    return fallback
+
+
+def elementary_math_quick_answer(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> str:
+    locality = str(center["locality"])
+    primary, secondary = profile.intents[:2]
+    intro = stable_pick(seed, "elementary-math-quick-intro-v1", (
+        f"{locality} 초등 수학에서 ‘{profile.focus}’을 판단하려면 최근 점수보다 아이가 남긴 풀이를 먼저 봅니다.",
+        f"‘{profile.focus}’이 필요한 {locality} 학생은 정답표보다 설명이 멈춘 문제에서 출발하는 편이 좋습니다.",
+        f"이 페이지의 핵심은 {locality} 학생의 ‘{profile.focus}’을 자료·행동·재확인으로 구체화하는 것입니다.",
+        f"{locality}에서 ‘{profile.focus}’을 살필 때는 많이 푼 문제보다 처음 풀이와 다시 푼 기록을 비교합니다.",
+        f"{locality} 초등 수학의 이번 초점은 ‘{profile.focus}’이며, 실제 교재 한 쪽에서 확인할 수 있습니다.",
+        f"‘{profile.focus}’을 계획으로 옮길 때는 {primary.label}의 근거와 {secondary.label}의 다음 행동을 나눕니다.",
+    ))
+    return naturalize_elementary_math_text(
+        f"{intro} 먼저 ‘{primary.evidence}’를 표시하세요. 이번 주에는 ‘{primary.action}’을 실행하고, 며칠 뒤에는 ‘{primary.checkpoint}’를 새 문제로 확인합니다. {secondary.label}은 별도 기록에 남겨 두 영역의 변화를 섞지 않습니다.",
+        profile,
+    )
+
+
+def elementary_math_sections(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> list[dict[str, object]]:
+    locality = str(center["locality"])
+    primary, secondary, support, extra = profile.intents
+    schools = relevant_schools(config, center)
+    school_text = "·".join(schools[:3]) if schools else "실제 재학 학교"
+    grades = relevant_grades(config, center, "수학")
+    grade_text = "·".join(grades) if grades else "현재 개설 가능한 초등 학년"
+    tuition_text = (
+        "연결된 교습비 자료의 기준 시점과 실제 과정·금액이 같은지 등록 전에 다시 확인합니다."
+        if center["tuition_url"]
+        else "제공된 교습비 링크가 없으므로 희망 센터에 현재 과정과 금액을 직접 문의합니다."
+    )
+
+    section1 = {
+        "key": "diagnosis",
+        "heading": f"{locality} 초등 수학 진단: {profile.focus}",
+        "paragraphs": [
+            stable_pick(seed, "em-s1-p1-v1", (
+                f"{locality} 초등 수학의 출발점은 ‘{profile.focus}’입니다. 진도표 한 줄만 보면 아이가 어디서 멈추는지 알기 어렵습니다. 최근 교재에서 혼자 시작한 문제, 도움을 받은 문제, 끝까지 설명한 문제를 서로 다른 표시로 나누면 현재 상태가 선명해집니다.",
+                f"‘{profile.focus}’을 {locality} 학생의 실제 계획으로 바꾸려면 현재 교재 한 쪽을 펼쳐야 합니다. 답이 맞았는지보다 첫 표시와 풀이 순서, 도움 뒤 바뀐 부분을 남기면 다음 진도를 서두르기 전에 확인할 지점이 보입니다.",
+                f"{locality}에서 초등 수학 방향을 정할 때 이 페이지는 ‘{profile.focus}’에 초점을 둡니다. 점수와 문제 수는 결과이고, 아이가 어떤 조건을 읽고 어떤 식을 먼저 적었는지는 과정입니다. 두 기록을 나누면 막연한 기초 부족을 구체적인 행동으로 바꿀 수 있습니다.",
+                f"이번 {locality} 초등 수학 점검의 질문은 ‘{profile.focus}’입니다. 쉬운 문제와 어려운 문제를 섞어 판단하지 말고, 같은 단원에서 혼자 푼 예와 멈춘 예를 한 문제씩 고르세요. 차이는 교재 난도보다 풀이 과정에서 먼저 확인할 수 있습니다.",
+            )),
+            stable_pick(seed, "em-s1-p2-v1", (
+                f"첫 자료에서는 {primary.label}{particle_for(primary.label, '을', '를')} 봅니다. ‘{primary.concern}’에 아이가 답하도록 하고, ‘{primary.evidence}’가 드러난 위치를 날짜와 함께 표시하세요. 설명을 대신해 주지 않아야 실제 출발점을 판단할 수 있습니다.",
+                f"{primary.label}의 기준은 정답 개수가 아닙니다. ‘{primary.evidence}’를 첫 기록으로 남긴 뒤 아이에게 ‘{primary.concern}’라고 묻습니다. 말과 풀이가 다르면 그 차이 자체를 다음 학습의 근거로 사용합니다.",
+                f"먼저 확인할 영역은 {primary.label}입니다. 교재에서 ‘{primary.evidence}’ 한 곳을 고르고, 아이가 ‘{primary.concern}’에 자기 말로 답하게 하세요. 답을 고쳐 주기 전 멈춘 위치를 보존해야 도움 전후의 변화를 비교할 수 있습니다.",
+                f"{primary.label} 자료를 고를 때는 최근 결과가 좋은 쪽만 찾지 않습니다. ‘{primary.evidence}’와 아이의 ‘{primary.concern}’에 대한 설명을 나란히 두면, 알고 있는 내용과 실제로 적용하는 범위를 구분할 수 있습니다.",
+            )),
+            stable_pick(seed, "em-s1-p3-v1", (
+                f"{secondary.label}은 같은 문제 안에서 억지로 판단하지 않습니다. ‘{secondary.evidence}’가 보이는 다른 자료를 고르고 {primary.label} 기록과 날짜를 분리하세요. 두 영역의 막힘이 다르면 과제의 순서와 분량도 달라져야 합니다.",
+                f"두 번째 자료는 {secondary.label}을 위해 고릅니다. ‘{secondary.evidence}’를 표시하고 첫 자료와 별도 칸에 적으세요. {primary.label}과 {secondary.label}을 한 점수로 합치지 않아야 무엇을 먼저 바꿀지 결정할 수 있습니다.",
+                f"{secondary.label}의 현재선은 ‘{secondary.evidence}’로 확인합니다. 첫 문제와 다른 날짜·다른 칸에 기록한 뒤, 두 영역 중 아이가 혼자 설명하지 못한 쪽을 이번 주의 한 가지 목표로 정하세요.",
+                f"{primary.label}의 결과만으로 전체 수학 상태를 단정하지 마세요. {secondary.label} 자료의 ‘{secondary.evidence}’까지 대조하면 개념, 조건 읽기, 계산 습관 가운데 실제로 먼저 손볼 순서를 정할 수 있습니다.",
+            )),
+        ],
+    }
+    section2 = {
+        "key": "evidence-action",
+        "heading": f"{primary.label}과 {secondary.label}: 근거를 행동으로 바꾸는 순서",
+        "paragraphs": [
+            stable_pick(seed, "em-s2-p1-v1", (
+                f"첫 기록을 남겼다면 {primary.label}은 ‘{primary.action}’으로 바꿉니다. 한 번에 여러 단원을 보완하려 하지 말고, 아이가 직접 시작하고 끝낼 수 있는 짧은 범위를 정하세요. 완료 여부는 풀이 흔적과 설명으로 확인합니다.",
+                f"{primary.label}의 진단이 끝나면 ‘{primary.action}’ 한 가지를 실행합니다. 문제 수를 늘리기보다 처음과 마지막 풀이를 남기고, 도움받은 단계에 표시하세요. 실행 흔적이 있어야 다음 분량을 조정할 수 있습니다.",
+                f"자료에서 찾은 {primary.label}의 막힘은 행동으로 이어져야 합니다. 이번 주에는 ‘{primary.action}’만 먼저 해 보고, 수행한 날짜와 혼자 마친 범위를 적으세요. 계획보다 실제 완료 기록을 우선합니다.",
+                f"{primary.label}을 보완한다는 말은 추상적입니다. ‘{primary.action}’을 한 차례 실행하고, 시작 시각·멈춘 위치·스스로 고친 부분을 남기세요. 이 세 가지가 다음 학습을 정할 근거가 됩니다.",
+            )),
+            stable_pick(seed, "em-s2-p2-v1", (
+                f"{secondary.label}은 ‘{secondary.action}’으로 따로 연습합니다. {primary.label}과 같은 날 하더라도 자료와 확인 질문을 나누세요. 그래야 아이가 한 영역의 도움을 다른 영역의 이해로 착각하지 않습니다.",
+                f"다음 행동은 {secondary.label}의 ‘{secondary.action}’입니다. 첫 행동과 다른 문제에서 실행하고, 아이가 무엇을 보고 풀이를 시작했는지 한 줄로 적게 하세요. 두 행동의 결과는 각각의 첫 자료와 비교합니다.",
+                f"{secondary.label}에는 별도의 최소 행동을 둡니다. ‘{secondary.action}’을 해 본 뒤 도움 전후의 풀이를 보존하세요. {primary.label}과 결과를 합치지 않으면 어느 쪽의 분량을 늘릴지 판단하기 쉽습니다.",
+                f"{secondary.label} 연습은 {primary.label}의 반복이 아닙니다. ‘{secondary.action}’을 다른 문제에서 수행하고, 아이가 고친 이유까지 말하도록 합니다. 정답만 같아도 이유가 다르면 기록은 따로 남깁니다.",
+            )),
+            stable_pick(seed, "em-s2-p3-v1", (
+                f"재확인에서는 익숙한 문제를 그대로 다시 주지 않습니다. 숫자·그림·질문 중 하나가 달라진 새 문제를 고르고 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 차례로 살피세요. 답을 기억한 것과 원리를 적용한 것을 구분하는 단계입니다.",
+                f"며칠 뒤에는 처음 풀었던 문제를 덮고 새 문제를 사용합니다. {primary.label}에는 ‘{primary.checkpoint}’, {secondary.label}에는 ‘{secondary.checkpoint}’를 묻고 아이의 설명을 기록하세요. 결과가 다르면 다음 주 분량도 영역별로 조정합니다.",
+                f"다시 볼 날에는 조건이 조금 달라진 문제를 준비하세요. ‘{primary.checkpoint}’를 먼저 확인하고 이어서 ‘{secondary.checkpoint}’를 살핍니다. 첫날과 달라진 풀이 단계만 표시하면 변화와 남은 빈틈을 함께 볼 수 있습니다.",
+                f"재학습의 끝은 같은 답을 외우는 것이 아닙니다. 새 문제에서 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’에 아이가 답할 수 있는지 확인하세요. 설명하지 못한 단계는 다음 주의 첫 행동으로 다시 옮깁니다.",
+            )),
+        ],
+    }
+    section3 = {
+        "key": "school-home",
+        "heading": f"학교 단원과 평소 교재에서 {support.label}을 확인하는 방법",
+        "paragraphs": [
+            stable_pick(seed, "em-s3-p1-v1", (
+                f"학교 단원과 평소 교재는 목적이 다를 수 있습니다. {support.label}에서는 ‘{support.exam_use}’을 기준으로 두 자료의 같은 기능을 찾으세요. 학교명보다 실제 범위와 아이가 설명하지 못한 문제를 우선해야 합니다.",
+                f"{support.label}을 학교 자료에 반영할 때는 ‘{support.exam_use}’을 살핍니다. 교과서·학습지·현재 교재의 페이지를 나란히 두되, 학교가 같다는 이유만으로 같은 진도나 문제 유형을 단정하지 않습니다.",
+                f"학교 단원 확인과 기초 연습을 한 계획에 섞지 마세요. ‘{support.exam_use}’을 학교 자료의 기준으로 두고, 평소 교재에는 별도의 복습일을 적습니다. 두 자료에서 같은 막힘이 반복되는지 비교합니다.",
+                f"{support.label}은 학교 일정에 맞추되 실제 학생 자료에서 확인합니다. ‘{support.exam_use}’을 적용할 문제를 고르고, 현재 교재의 같은 기능과 연결하세요. 공개된 학교 목록만으로 범위와 난도를 추정하지 않습니다.",
+            )),
+            stable_pick(seed, "em-s3-p2-v1", (
+                f"학교 일정이 가까운 주에는 {support.label}의 최소 행동을 먼저 배치하고, {extra.label}은 짧은 복습으로 유지합니다. 일정이 지나면 두 기록을 다시 비교해 기초 보완과 다음 단원의 비중을 조정하세요.",
+                f"단원평가나 학교 과제가 있는 주에도 평소 기초를 모두 멈추지는 않습니다. {support.label}의 마감일과 {extra.label}의 재확인일을 다른 칸에 적으면 단기 준비와 누적 복습을 구분할 수 있습니다.",
+                f"학교 자료의 완료일과 평소 교재의 재확인일을 나누세요. {support.label}은 현재 단원의 수행 흔적으로, {extra.label}은 새 문제의 설명 결과로 확인합니다. 일정이 겹치면 각 영역의 최소 행동만 남깁니다.",
+                f"학교 단원을 준비하는 동안에는 {support.label}을 우선하되, {extra.label}의 첫 기록을 보존합니다. 학교 일정 뒤 새 문제로 다시 확인하면 단기 암기와 실제 이해를 구분할 수 있습니다.",
+            )),
+            stable_pick(seed, "em-s3-p3-v1", (
+                f"참고 학교는 {school_text}이며 이는 학군·배정·재학 또는 현재 수업 반영을 보장하지 않습니다. 학생의 실제 학교, 현재 단원과 자료를 상담 때 제시하고 반영 가능 여부를 별도로 확인하세요.",
+                f"페이지에서 확인되는 참고 학교는 {school_text}입니다. 목록에 있더라도 같은 진도나 평가 일정을 뜻하지 않으므로 실제 재학 학교의 교과서·범위표를 가져와 자료 반영 방식을 다시 물어야 합니다.",
+                f"{school_text} 표기는 상담 준비를 돕는 참고 정보입니다. 학교별 난도나 성과를 추정하지 말고, 학생이 실제로 배우는 단원과 최근 풀이를 제시해 {support.label}의 적용 범위를 확인하세요.",
+                f"학교 관련 정보는 {school_text}까지 제공됩니다. 이 목록과 실제 재학 학교가 다를 수 있으므로 학교명보다 현재 교재·단원·과제의 내용을 기준으로 수업 가능 여부를 확인합니다.",
+            )),
+        ],
+    }
+    section3["paragraphs"][0] = naturalize_elementary_math_text(
+        f"{section3['paragraphs'][0]} {locality} 기록에서는 {primary.label}의 첫 자료와 "
+        f"{support.label}의 학교 자료를 다른 날짜에 확인합니다.",
+        profile,
+    )
+    section4 = {
+        "key": "verified-facts",
+        "heading": f"{locality} 센터 사실과 초등 수학 학습 판단을 구분하는 법",
+        "paragraphs": [
+            stable_pick(seed, "em-s4-p1-v1", (
+                f"확인된 센터명은 {center['center_name']}, 제공 주소는 {center['address']}입니다. 초등 수학 가능 학년은 {grade_text} 기준으로 보되, 실제 시간표·반 편성·결석 보완 방식은 이 페이지에서 확정하지 않습니다. 등록 전 현재 운영 내용을 직접 확인하세요.",
+                f"{center['center_name']}의 제공 주소는 {center['address']}입니다. 페이지의 초등 수학 학년 정보는 {grade_text}이며 개설 시간이나 반 구성과 같은 운영 조건은 바뀔 수 있습니다. 학습 적합성과 이용 조건을 다른 메모에 적어 확인하세요.",
+                f"센터 관련 제공 사실은 {center['center_name']}, {center['address']}, 초등 수학 {grade_text}입니다. 이 정보만으로 차량·주차·시간표·보강을 추정할 수 없으므로 방문 전 희망 요일과 현재 운영 범위를 따로 물어봅니다.",
+                f"학습 계획과 센터 사실은 분리해야 합니다. {center['center_name']}의 제공 주소는 {center['address']}이고 초등 수학 표기 학년은 {grade_text}입니다. 실제 수업 가능 여부는 상담 시점의 시간표와 함께 다시 확인합니다.",
+            )),
+            stable_pick(seed, "em-s4-p2-v1", (
+                f"{tuition_text} 학습 상담에서는 {primary.label}의 자료와 {secondary.label}의 다음 행동을 먼저 확인하고, 비용·시간표·통학 조건은 별도의 사실 확인표에 남기세요.",
+                f"{tuition_text} 센터 선택 이유와 학습 판단을 섞지 말고, {primary.label}·{secondary.label}의 답변이 실제 학생 자료에 적용되는지 먼저 살펴보세요.",
+                f"{tuition_text} 상담 메모는 학습 항목과 이용 항목 두 칸으로 나누고, 학습 칸에는 {primary.label}의 실행일과 {secondary.label}의 재확인일을 적습니다.",
+                f"{tuition_text} 주소와 이용 조건을 확인한 날짜도 남기고, {primary.label}·{secondary.label}에 관한 학습 설명은 최근 풀이와 대조해 판단하세요.",
+            )),
+            stable_pick(seed, "em-s4-p3-v1", (
+                "페이지의 센터·학교 정보는 제공 자료의 범위 안에서만 사용합니다. 학년이 비어 있거나 학교 목록이 없으면 임의로 보완하지 않으며, 실제 재학 정보와 현재 개설 여부를 센터에 직접 확인하는 것이 안전합니다.",
+                "공개 정보가 없는 항목은 없는 그대로 두는 편이 정확합니다. 특정 학교 재학생의 성과, 합격·점수 상승, 차량·주차와 같은 조건은 이 페이지에서 주장하지 않으며 실제 상담 답변과 확인일을 기록합니다.",
+                "확인되지 않은 운영 조건이나 학습 결과를 추정하지 않습니다. 제공 학년·학교·주소와 상담에서 새로 들은 답변의 출처를 나누고, 바뀔 수 있는 정보는 등록 직전에 다시 확인하세요.",
+                "센터 정보는 학습 효과를 보장하는 근거가 아닙니다. 제공된 주소·학년·학교 참고 정보와 학생의 실제 풀이를 각각 확인하고, 시간표와 교습비는 현재 답변을 받아 판단합니다.",
+            )),
+        ],
+    }
+    section4["paragraphs"][2] = naturalize_elementary_math_text(
+        f"{section4['paragraphs'][2]} {locality} 페이지에서는 {primary.label}의 학습 근거와 "
+        f"{support.label} 관련 사실의 출처를 같은 칸에 섞지 않습니다.",
+        profile,
+    )
+    section5 = {
+        "key": "seven-day-plan",
+        "heading": f"{primary.label}에서 {secondary.label}으로 이어지는 7일 실행안",
+        "paragraphs": [
+            stable_pick(seed, "em-s5-p1-v1", (
+                f"첫날에는 {primary.label} 자료 한 곳과 {secondary.label} 자료 한 곳을 고릅니다. 각각 ‘{primary.evidence}’와 ‘{secondary.evidence}’를 표시하고, 아이가 도움 없이 설명한 범위를 적으세요. 진도는 이 기록을 남긴 뒤 정합니다.",
+                f"1일 차에는 현재 교재에서 {primary.label}·{secondary.label}의 대표 문제를 한 개씩 찾습니다. 첫 풀이를 지우지 않고 멈춘 위치와 도움 내용을 남기며, 이번 주에 바꿀 행동은 한 가지로 제한합니다.",
+                f"계획의 시작은 문제 수가 아니라 기준선 기록입니다. {primary.label}에서는 ‘{primary.evidence}’, {secondary.label}에서는 ‘{secondary.evidence}’를 찾아 날짜를 적고 아이의 설명을 그대로 남기세요.",
+                f"첫 점검일에는 두 영역을 한꺼번에 고치지 않습니다. {primary.label}과 {secondary.label}의 첫 문제를 보존하고, 혼자 한 단계·도움받은 단계·다시 한 단계를 나누어 이번 주 우선순위를 정합니다.",
+            )),
+            stable_pick(seed, "em-s5-p2-v1", (
+                f"2~4일 차에는 ‘{primary.action}’을 짧게 반복하고, 다른 날에는 ‘{secondary.action}’을 실행합니다. 각 활동 뒤 아이가 고친 이유와 아직 질문할 부분을 한 줄씩 남겨 다음 행동을 선택할 자료로 만드세요.",
+                f"가운데 날에는 {primary.label}과 {secondary.label}의 행동을 번갈아 배치합니다. ‘{primary.action}’과 ‘{secondary.action}’을 같은 날 몰아서 하지 말고, 완료 여부와 도움받은 부분을 각 기록에 따로 적습니다.",
+                f"주중 실행은 짧고 분명해야 합니다. ‘{primary.action}’을 먼저 한 뒤 하루 이상 간격을 두고 ‘{secondary.action}’을 해 보세요. 계획한 분량보다 실제로 끝낸 과정과 남은 질문을 기록합니다.",
+                f"2~4일 차에는 첫 자료를 계속 베끼지 않습니다. {primary.label}의 한 가지 행동과 {secondary.label}의 한 가지 행동을 다른 문제에서 수행하고, 아이가 풀이 이유를 말한 부분에 표시합니다.",
+            )),
+            stable_pick(seed, "em-s5-p3-v1", (
+                f"7일 차에는 첫 문제를 덮고 새 문제를 고릅니다. ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 확인한 뒤 처음 기록과 달라진 단계만 표시하세요. 결과에 따라 유지할 행동, 줄일 분량과 다시 설명할 개념을 정합니다.",
+                f"마지막 날은 평가가 아니라 다음 계획을 정하는 날입니다. 조건이 달라진 문제에서 {primary.label}과 {secondary.label}의 확인 질문을 다시 묻고, 혼자 시작한 범위와 도움받은 범위를 첫날 자료와 비교하세요.",
+                f"일주일 뒤에는 숫자나 그림이 달라진 문제를 사용합니다. ‘{primary.checkpoint}’를 먼저 살피고 ‘{secondary.checkpoint}’를 이어 확인해, 답을 기억한 것이 아니라 풀이 원리를 다시 적용했는지 봅니다.",
+                f"재확인일에는 첫 기록의 정답을 가리지 말고 새 문제를 별도로 풉니다. {primary.label}과 {secondary.label}에서 아이가 스스로 설명한 단계가 넓어졌는지 비교하고 다음 주 분량을 조정하세요.",
+            )),
+        ],
+        "checklist": [
+            ("첫 자료", f"{primary.label}·{secondary.label}의 멈춘 위치와 날짜를 각각 남기기"),
+            ("최소 행동", f"{primary.action}을 실행하고 도움 여부 표시하기"),
+            ("새 문제", f"{secondary.action}을 조건이 달라진 문제에서 해 보기"),
+            ("재확인", f"{primary.checkpoint}를 첫 기록과 비교해 다음 분량 정하기"),
+        ],
+    }
+    section6 = {
+        "key": "consultation",
+        "heading": f"{primary.label}과 {secondary.label} 상담 전 준비할 자료와 질문",
+        "paragraphs": [
+            stable_pick(seed, "em-s6-p1-v1", (
+                f"상담에는 최근 교재와 학교 자료, 처음 풀이와 다시 풀이한 문제를 준비하세요. {primary.label}에는 ‘{primary.consult_question}’라고 묻고, 답변이 아이의 ‘{primary.evidence}’에 어떻게 적용되는지 확인합니다.",
+                f"첫 상담 전에 {primary.label}의 대표 문제와 {secondary.label}의 막힌 문제를 한 장씩 고르세요. ‘{primary.consult_question}’을 질문한 뒤 설명을 실제 풀이에 적용할 첫 행동과 확인 날짜로 바꿉니다.",
+                f"상담 자료는 많을 필요가 없습니다. {primary.label}과 {secondary.label}의 첫 풀이, 도움 뒤 바뀐 풀이, 학교 일정만 준비하고 ‘{primary.consult_question}’의 답을 주간 계획에 반영할 수 있는지 살펴보세요.",
+                f"{locality} 상담 메모에는 학생 자료 위치와 질문을 연결해 적습니다. {primary.label}에 대해 ‘{primary.consult_question}’을 묻고, 답변 뒤 누가 무엇을 언제 확인할지 한 문장으로 정리하세요.",
+            )),
+            stable_pick(seed, "em-s6-p2-v1", (
+                f"두 번째 질문은 {secondary.label}입니다. ‘{secondary.consult_question}’라고 묻고, 설명·연습·새 문제 재확인의 세 단계가 있는지 확인하세요. 단순히 문제 수나 진도만 늘리는 답변과 실제 행동 계획을 구분합니다.",
+                f"{secondary.label} 상담에서는 ‘{secondary.consult_question}’을 확인합니다. 답변에 첫 자료, 이번 주 행동과 다음 점검일이 빠져 있다면 구체적인 예를 다시 요청하세요. 성과 약속보다 확인 가능한 과정이 중요합니다.",
+                f"이어서는 ‘{secondary.consult_question}’을 묻습니다. 학생이 혼자 할 부분과 도움받을 부분, 새 문제를 다시 볼 날짜를 구분해 달라고 요청하면 추상적인 안내를 실행 가능한 계획으로 바꿀 수 있습니다.",
+                f"{secondary.label}의 질문은 ‘{secondary.consult_question}’입니다. 답변을 들은 뒤 최근 풀이에서 시작할 위치와 재확인 자료를 짚어 보세요. 아이의 자료와 연결되지 않는 설명은 다시 구체화해야 합니다.",
+            )),
+            stable_pick(seed, "em-s6-p3-v1", (
+                f"마지막으로 {extra.label}의 ‘{extra.consult_question}’과 센터 이용 조건을 나누어 확인하세요. 페이지의 가상 상담 장면은 실제 후기나 성과가 아니며, 학습 결과는 출발점과 실행에 따라 달라질 수 있습니다.",
+                f"학습 질문 뒤에는 {extra.label}과 주소·학년·시간표·교습비를 별도 항목으로 확인합니다. 가상 예시는 특정 학생의 결과를 뜻하지 않으므로, 실제 학생 자료와 현재 센터 답변을 바탕으로 판단하세요.",
+                f"{extra.label}에 관한 답변과 센터 운영 사실은 서로 다른 근거입니다. 확인 날짜와 출처를 나누어 적고, 특정 점수 상승이나 진학 결과를 보장하는 표현보다 다음 점검 방법이 구체적인지 살펴보세요.",
+                f"상담을 마칠 때는 {extra.label}의 첫 행동과 재확인일, 센터 조건의 확인일을 각각 남깁니다. 이 페이지의 예시는 준비용 가상 상황이며 실제 이용 후기나 학습 성과로 해석하지 않습니다.",
+            )),
+        ],
+    }
+    section6["paragraphs"][1] = naturalize_elementary_math_text(
+        f"{section6['paragraphs'][1]} {locality} 상담에서는 {secondary.label}의 답을 "
+        f"{extra.label} 재확인일과 구분해 적습니다.",
+        profile,
+    )
+    return naturalize_elementary_math_tree(
+        [section1, section2, section3, section4, section5, section6], profile
+    )  # type: ignore[return-value]
+
+
+def elementary_math_faq(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> list[tuple[str, str]]:
+    locality = str(center["locality"])
+    primary, secondary, support, extra = profile.intents
+    grades = relevant_grades(config, center, "수학")
+    grade_answer = (
+        f"제공된 초등 수학 가능 학년은 {'·'.join(grades)}입니다. 실제 개설 시간과 반 편성은 등록 전에 다시 확인하세요."
+        if grades
+        else "제공 자료에는 초등 수학 가능 학년이 비어 있습니다. 학년을 추정하지 말고 현재 개설 학년과 시간표를 센터에 직접 문의하세요."
+    )
+    schools = relevant_schools(config, center)
+    school_answer = (
+        f"참고 학교는 {'·'.join(schools[:3])} 등이며 재학·배정·현재 수업 반영을 보장하지 않습니다. 실제 학교 단원과 학생 자료를 제시해 반영 가능 여부를 확인하세요."
+        if schools
+        else "제공된 참고 초등학교 목록이 없습니다. 학교를 추정하지 말고 실제 재학 학교, 현재 단원과 교재를 제시해 자료 반영 가능 여부를 확인하세요."
+    )
+    questions = [
+        (f"{locality} 초등 수학에서 {primary.label}은 어떤 자료로 진단하나요?",
+         f"‘{primary.evidence}’가 보이는 최근 문제를 고르고 아이에게 ‘{primary.concern}’라고 묻습니다. 도움 전 풀이와 다시 푼 과정을 보존한 뒤 새 문제에서 ‘{primary.checkpoint}’를 확인하세요."),
+        (f"{profile.focus}을 일주일 계획으로 어떻게 바꾸나요?",
+         f"첫날에는 {primary.label}과 {secondary.label}의 기준선을 따로 남깁니다. 주중에는 ‘{primary.action}’과 ‘{secondary.action}’을 다른 문제에서 실행하고, 마지막 날 새 문제로 두 확인 질문을 다시 살핍니다."),
+        (f"{locality} 초등 수학 가능 학년과 학교 자료는 어떻게 확인하나요?",
+         f"{grade_answer} {school_answer}"),
+        (f"{center['center_name']} 주소·교습비·시간표는 어디에서 확인하나요?",
+         f"제공 주소는 {center['address']}입니다. " + (
+             "연결된 교습비 자료의 기준 시점과 실제 과정이 같은지 확인하고, 시간표·보완 방식은 센터에 직접 문의하세요."
+             if center["tuition_url"] else
+             "제공된 교습비 링크가 없으므로 현재 과정·금액·시간표를 센터에 직접 문의하세요."
+         )),
+        (f"{locality} 초등 수학 상담 예시를 실제 후기나 성과로 보아도 되나요?",
+         f"아닙니다. 페이지의 장면은 상담 준비를 돕는 가상 예시이며 특정 학생의 후기나 점수 향상 사례가 아닙니다. {support.label}·{extra.label}의 실제 기록과 현재 센터 조건을 확인해 판단하세요."),
+    ]
+    shift = stable_int(seed, "elementary-math-faq-order-v1") % 3
+    if shift:
+        questions[2:5] = questions[2 + shift:5] + questions[2:2 + shift]
+    return naturalize_elementary_math_tree(questions, profile)  # type: ignore[return-value]
+
+
+def elementary_math_scenarios(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> list[str]:
+    locality = str(center["locality"])
+    primary, secondary, support, extra = profile.intents
+    first = stable_pick(seed, "elementary-math-scenario-one-v1", (
+        f"{locality} 초등학생이 같은 단원의 쉬운 문제는 맞히지만 설명이 필요한 문제에서 멈추는 가상 상황입니다. 학부모는 {primary.label}의 첫 풀이와 {secondary.label}의 다시 풀이를 가져와 ‘{primary.consult_question}’을 묻고, 다음 점검까지 실행할 행동을 하나만 정합니다.",
+        f"학교 과제는 마치지만 비슷한 실수를 반복하는 {locality} 초등학생의 상담 준비 장면을 가정했습니다. 학부모는 ‘{primary.evidence}’와 ‘{secondary.evidence}’를 다른 자료에서 표시해 보여 주고, 설명이 필요한 부분과 혼자 연습할 부분을 나눠 질문합니다.",
+        f"현재 교재의 진도를 계속할지 기초를 다시 볼지 고민하는 {locality} 가정의 가상 상담 상황입니다. 학부모는 {primary.label}과 {secondary.label}의 새 문제 결과를 제시하고, 문제 수보다 먼저 바꿀 풀이 행동과 재확인 날짜를 확인합니다.",
+        f"수학 학습 시간이 일정하지 않은 {locality} 초등학생의 준비용 사례입니다. 학부모는 {primary.label}의 최소 행동과 {secondary.label}의 확인일을 나누어 적고, 학교 일정이 많은 날에도 실행할 수 있는 분량을 상담에서 질문합니다.",
+    ))
+    second = stable_pick(seed, "elementary-math-scenario-two-v1", (
+        f"{locality} 상담에서 {center['center_name']}의 제공 주소와 학년 정보를 확인한 뒤 실제 시간표·통학 조건·교습비를 별도로 묻는 가상 장면입니다. {support.label}의 학습 답변과 센터 운영 사실을 한 문장에 섞지 않고 출처와 확인일을 나누어 기록합니다.",
+        f"{locality} 초등 수학 상담 뒤 첫 계획을 일주일 실행한 가정을 가정했습니다. 아이가 ‘{support.action}’을 마쳤는지와 ‘{extra.checkpoint}’에 답했는지 비교하고, 미완료 이유가 있으면 다음 분량과 재확인일을 조정합니다.",
+        f"페이지의 참고 학교와 실제 재학 학교가 다른 {locality} 가정의 가상 상황입니다. 학부모는 실제 학교 단원과 현재 교재를 제시해 자료 반영 여부를 다시 확인하고, 공개 목록만으로 수업 가능 여부나 진도를 추정하지 않습니다.",
+        f"{locality}에서 센터 설명과 학생 자료가 일치하는지 비교하는 준비용 장면입니다. 학부모는 {support.label}의 첫 행동과 {extra.label}의 확인 기준을 최근 풀이에 적용해 보고, 확인되지 않은 차량·주차·보강 운영은 직접 문의합니다.",
+    ))
+    return naturalize_elementary_math_tree([first, second], profile)  # type: ignore[return-value]
 
 
 def middle_math_intent_text(value: str, code: str) -> str:
@@ -1161,6 +2168,462 @@ def high_english_profile(raw: str, locality: str) -> HighEnglishProfile:
         source_title=source_title,
         intents=tuple(ranked[:4]),
         source_markers=tuple(markers[:4]),
+    )
+
+
+def repair_elementary_english_focus(value: str) -> str:
+    repairs = (
+        ("학습 학습", "학습"),
+        ("영어 영어", "영어"),
+        ("기초부터 기초", "기초부터"),
+        ("학습 점검 점검", "학습 점검"),
+        ("다음 학년 다음 학년", "다음 학년"),
+        ("학교 영어 영어", "학교 영어"),
+        ("장기 학습 계획계획", "장기 학습 계획"),
+        ("과정를", "과정을"),
+        ("점검를", "점검을"),
+        ("점검로", "점검으로"),
+        ("학습 점검으로 완성하는 실력", "학습 기록으로 변화를 확인하는 방법"),
+        ("실력의 방향을 바르게", "영어 학습 방향을 바르게"),
+        ("암기보다 이해를 세우는", "암기와 이해를 연결하는"),
+        ("학습 원인부터 살피는", "학습이 막힌 원인부터 살피는"),
+        ("참여을", "참여를"),
+        ("계획로", "계획으로"),
+        ("기록로", "기록으로"),
+        ("점검상담", "상담"),
+        ("점검클리닉", "점검"),
+        ("학습 참여", "영어 활동 참여"),
+        ("진단평가", "기초 진단"),
+        ("학생별 진도로 배우는", "학생별 진도를 확인하는"),
+        ("실제 학습 중심 학생별 학습 점검", "실제 활동을 중심으로 살피는 학생별 점검"),
+        ("학생별 학습 안내와 학습 변화 중심 학습", "학생별 안내와 영어 변화 기록을 함께 살피는 방법"),
+        ("기초를 잇는 학생별 학습 점검 학습", "기초를 잇는 학생별 영어 점검"),
+        ("장기 학습 계획으로 시작하는 학생별 학습 점검", "장기 학습 계획에서 시작하는 학생별 점검"),
+    )
+    for before, after in repairs:
+        value = value.replace(before, after)
+    if value.count("학생별") > 1:
+        first, *rest = value.split("학생별")
+        value = first + "학생별" + "아이별".join(rest)
+    if value.count("학습") > 1:
+        value = re.sub(r"학생별\s+학습\s+점검", "학생별 점검", value)
+        value = re.sub(r"영어\s+학습$", "영어 공부법", value)
+        value = re.sub(r"\s+학습$", " 방법", value)
+    if value.count("학습") > 1:
+        first, *rest = value.split("학습")
+        value = first + "학습" + "공부".join(rest)
+    value = re.sub(r"(?<![가-힣])([가-힣]{2,12})\s+\1(?![가-힣])", r"\1", value)
+    value = re.sub(r"\s+", " ", value).strip(" ,·|:-")
+    return value
+
+
+ELEMENTARY_ENGLISH_SAFE_FOCUS_OVERRIDES = {
+    "구의동": "초등 영어 어휘와 문장 이해를 함께 준비하는 학습",
+    "북가좌동": "초등 영어 읽기 속도와 이해를 함께 살피는 방법",
+    "진관동": "초등 영어 기초와 학교 영어 학습을 함께 준비하는 방법",
+    "탄벌동": "초등 영어 기초 읽기와 어휘를 확인하는 방법",
+    "권선동": "초등 영어 문장 읽기와 기초 개념을 점검하는 방법",
+    "이충동": "초등 영어 기초를 다음 학년 학습으로 연결하는 방법",
+    "쌍용동": "초등 영어 어휘를 문장 읽기로 연결하는 학습 관리",
+    "달동": "초등 영어 겨울방학 기초 학습 순서를 정하는 방법",
+    "원주혁신도시": "초등 영어 읽기·어휘 기초를 설계하는 방법",
+}
+
+
+ELEMENTARY_ENGLISH_MIDDLE_TRANSITION_FOCUS_OVERRIDES = {
+    "삼각산동": "초6 영어 기초에서 중학교 첫 시험 준비로 넘어가는 방법",
+    "보라동": "초6 영어 학습 기록으로 중학교 준비를 시작하는 방법",
+    "영덕동": "중학교 입학 전 초등 영어 기초를 확인하는 방법",
+    "부발읍": "예비 중학생의 초등 영어 기초를 점검하는 방법",
+    "시지동": "초등 영어 기초를 중학교 영어로 연결하는 학습 설계",
+    "상남동": "초6 영어에서 중1 첫 시험까지 준비하는 학습 순서",
+    "중화산동": "초등 영어 읽기·어휘를 중등 영어 준비로 연결하는 방법",
+}
+
+
+ELEMENTARY_ENGLISH_EDITORIAL_FOCUS_OVERRIDES = {
+    "경안동": "영어 활동 참여를 차근히 늘리는 학생별 학습 점검",
+    "화명신도시": "누적 복습으로 영어 기초를 다지는 학습",
+    "당산동": "가까운 거리보다 학습 루틴을 먼저 살피는 방법",
+    "신월동": "진도보다 기초 이해를 먼저 확인하는 학습",
+    "토당동": "교과서 문장을 다음 읽기 활동으로 연결하는 방법",
+    "서정동": "숙제 양보다 영어 기초 이해를 먼저 확인하는 학습",
+    "신방화": "기초 문법을 문장 읽기로 연결하는 학습 순서",
+    "신도림동": "생각한 내용을 영어 문장으로 설명하는 학습 점검",
+    "시흥동": "영어 기초의 빈틈을 차례로 확인하는 방법",
+    "하계동": "아이의 영어 출발점을 영역별로 살피는 방법",
+    "중계동": "배운 영어 표현을 새 문장에 적용하는 학습",
+    "돈암동": "발음과 독해 습관을 차례로 다지는 학습",
+    "종암동": "문법이 어려운 아이의 문장 적용을 돕는 학습",
+    "목동": "학교 영어 활동의 시간 배분을 연습하는 방법",
+    "역촌동": "학년과 현재 수준을 함께 살피는 영어 학습 기준",
+    "위례": "영어 학습 참여를 편안하게 시작하는 방법",
+    "위례신도시": "짧은 글 독해의 기초를 차례로 다지는 학습",
+    "창곡동": "기초 어휘를 문장 이해로 연결하는 학습",
+    "삼송": "짧은 영어 문장을 쓰고 고치는 학습 순서",
+    "대화동": "학년별 영어 기초를 비교하는 상담 준비 기준",
+    "정발산동": "학교 단원 학습을 미리 나누어 준비하는 방법",
+    "식사동": "교재 진도와 가정 복습 습관을 조율하는 방법",
+    "화정동": "학교 영어의 부족한 부분을 자료로 찾는 학습",
+    "광명동": "현재 읽기 수준에서 다음 글을 고르는 기준",
+    "갈매동": "학기 초 영어 학습 습관을 차례로 세우는 방법",
+    "장기동": "학년별 영어 기초를 순서대로 다지는 학습",
+    "호평동": "현재 수준에 맞는 영어 학습 순서를 찾는 방법",
+    "범박동": "긴 글을 읽을 때 집중 흐름을 확인하는 학습",
+    "부천 상동": "영어 기초와 학습 참여를 함께 살피는 방법",
+    "옥길동": "겨울방학에 영어 기초 개념을 다지는 순서",
+    "구미동": "꾸준한 영어 기록으로 학습 변화를 확인하는 방법",
+    "수진동": "영어 학습이 막히는 원인을 자료에서 찾는 방법",
+    "상대원동": "현재 학습에서 먼저 확인해 영어 방향을 정하는 기준",
+    "여수동": "영어 학습 전 진단 자료로 출발점을 찾는 방법",
+    "야탑": "짧은 문장 쓰기의 시작 순서를 정하는 방법",
+    "수원 금곡동": "영어 기초와 공부 루틴을 함께 세우는 방법",
+    "천천동": "학습 점검으로 영어 기초를 차근히 다지는 방법",
+    "정자동": "문장 읽기와 기초 어휘를 함께 점검하는 방법",
+    "호매실동": "영어 자료 분석으로 공부 방향을 다시 세우는 방법",
+    "배곧": "아이의 현재 진도에서 다음 학습을 정하는 기준",
+    "비산동": "영어 기초를 이해도와 설명으로 확인하는 방법",
+    "안양동": "영어 학습 참여와 설명하는 힘을 함께 기르는 방법",
+    "옥정동": "짧은 문장 쓰기를 시작하는 학습 순서",
+    "옥정신도시": "스스로 시작하고 확인하는 영어 학습 습관",
+    "세교": "읽기 습관과 자기 주도 학습을 함께 점검하는 방법",
+    "수청동": "영어 학습 참여와 문장 읽기를 함께 키우는 방법",
+    "오산동": "아이의 속도에 맞춰 영어 학습 변화를 기록하는 방법",
+    "원동": "아이의 영어 강점을 다음 학습으로 연결하는 방법",
+    "부산동": "영어 학습의 약한 지점을 차례로 보완하는 방법",
+    "김량장동": "기초 문법을 실제 문장에 적용하는 학습",
+    "갈산동": "학습 기록으로 영어 기초의 이해도를 확인하는 방법",
+    "안흥동": "기초 문장부터 비교 표현까지 이해하는 순서",
+    "교하": "영어 학습 시간을 나누어 기초를 다지는 방법",
+    "금릉": "문장 읽기와 학교 영어의 흐름을 함께 점검하는 방법",
+    "금촌동": "영어 과제 기록으로 공부 흐름을 확인하는 방법",
+    "산내마을": "질문하는 습관을 기준으로 영어 출발점을 확인하는 방법",
+    "동패동": "영어 기초부터 학습 기록까지 차례로 관리하는 방법",
+    "운정": "영어 학습 목표를 주간 행동으로 연결하는 방법",
+    "운정신도시": "영어 학습 일정과 복습일을 나누어 관리하는 방법",
+    "운정중앙": "실행할 수 있는 영어 학습 계획을 세우는 방법",
+    "비전동": "고학년 영어의 핵심 개념과 읽기를 함께 점검하는 방법",
+    "죽백동": "영어책 읽기 기록으로 학습 과정을 확인하는 방법",
+    "송탄": "영어를 처음 시작할 때 소리와 습관을 다지는 방법",
+    "미사": "영어 문제 기록으로 기초의 빈틈을 확인하는 방법",
+    "동탄목동": "학교 영어 단원이 넓을 때 학습 순서를 정하는 방법",
+    "병점": "첫 영어 학습 점검에서 확인할 자료와 질문",
+    "봉담2지구": "복습 기록으로 영어 기초를 다시 다지는 방법",
+    "봉담읍": "기초 문법을 예문과 함께 익히는 학습",
+    "청계동": "배운 영어 내용을 정리하고 다시 확인하는 방법",
+    "구월동": "영어 기초의 이해 범위를 자료로 확인하는 방법",
+    "관교동": "아이의 영어 진도와 다음 학습을 함께 정하는 기준",
+    "논현동": "학교 단원 오답을 다음 읽기로 연결하는 방법",
+    "산곡동": "영어 기초선을 높이는 반복 학습 방법",
+    "인천 갈산동": "실제 영어 자료로 학습 순서를 점검하는 방법",
+    "연수동": "영어 문장과 학습 루틴의 흐름을 함께 세우는 방법",
+    "송도": "영어 기초부터 주간 학습 전략을 세우는 방법",
+    "송촌동": "영어 학습 시간표로 공부 습관을 세우는 방법",
+    "비래동": "영어 학습 진척도를 기록으로 확인하는 방법",
+    "도안신도시": "자기 주도 영어 학습을 시작하는 작은 습관",
+    "둔산동": "영어 기초를 영역별 학습 기록으로 점검하는 방법",
+    "관평동": "영어 기초와 집중 상태를 함께 살피는 학습 점검",
+    "지족동": "문장 이해에서 기초 어법까지 차례로 익히는 학습",
+    "태평동": "학교 영어 활동을 짧은 글쓰기로 연결하는 방법",
+    "다정동": "듣기부터 영어 기본기를 차례로 다지는 학습",
+    "신불당": "원서 읽기와 집중 습관을 함께 확인하는 방법",
+    "신방동": "문장 구조와 장기 학습 계획을 함께 세우는 방법",
+    "용곡동": "영어 기초에서 장기 학습 계획까지 잇는 방법",
+    "가경동": "장기 영어 계획으로 학습 과정을 점검하는 방법",
+    "복대동": "영어 말하기 기록으로 학습 방향을 정하는 방법",
+    "비하동": "쉬운 문제 뒤의 설명 과정을 확인하는 학습",
+    "칠금동": "영어 학습을 꾸준히 이어 가는 힘을 기르는 방법",
+    "본리동": "기초 어법과 영어 학습 방향을 함께 세우는 방법",
+    "감삼동": "틀린 이유 기록으로 영어 학습 흐름을 세우는 방법",
+    "상인동": "현재 학교 영어 진도에서 복습 순서를 정하는 방법",
+    "용산동": "긴 문장을 읽다 막히는 원인을 확인하는 방법",
+    "대구 유천동": "영어 상담에서 학습 기준을 확인하는 방법",
+    "신기동": "생각한 내용을 영어로 설명하는 학습",
+    "이시아폴리스": "영어 학습 근거를 자료와 설명으로 확인하는 방법",
+    "국우동": "기초 어휘를 문장에 활용하는 학습 순서",
+    "도남지구": "학교 영어 평가와 평소 습관을 함께 준비하는 방법",
+    "구암동": "학교 영어를 집중해서 준비할 때 확인할 기준",
+    "동천동": "학교 영어 학습 과정과 다음 방향을 함께 점검하는 방법",
+    "침산동": "기초 문법의 시작 시기와 학교 영어를 연결하는 방법",
+    "고성동": "아이의 학습 성향에 맞는 영어 순서를 찾는 방법",
+    "칠성동": "방학에도 학교 영어 진도를 이어 가는 복습 방법",
+    "신천동": "영어 발표와 학습 참여를 함께 기르는 방법",
+    "대봉동": "학교 영어 준비와 복습 기록을 함께 관리하는 방법",
+    "봉산동": "1학기 영어 학습을 준비하는 주간 전략",
+    "울산 삼산동": "암기한 어휘를 이해로 연결하는 영어 학습",
+    "화봉동": "학교 영어 점검과 기본기를 함께 준비하는 방법",
+    "송정동": "학교 영어 준비와 학습 흐름을 함께 점검하는 방법",
+    "복산동": "학교 영어 결과보다 먼저 학습 기록을 다시 보는 방법",
+    "온천동": "학교 영어 범위와 공부 습관을 함께 나누는 방법",
+    "사직동": "학교 영어 시간 배분을 점검하는 상담 준비",
+    "거제동": "학교 영어 집중 기간에 기초를 함께 점검하는 방법",
+    "화명동": "짧은 문장 쓰기와 수정 과정을 차례로 준비하는 방법",
+    "재송동": "학기 말 부족한 영어 영역을 차분히 보완하는 방법",
+    "해운대 중동": "아이의 영어 기록과 학습 변화를 함께 살피는 방법",
+    "경산사동": "배운 문장을 바꾼 문제까지 적용하는 학습",
+    "옥산동": "배움의 틀을 세우고 학습 과정을 다시 확인하는 방법",
+    "옥계동": "아이의 집중 흐름을 영어 활동으로 확인하는 방법",
+    "석동": "영어 기초와 복습 습관을 함께 다지는 방법",
+    "경화동": "영어 학습 기록과 독해 과정을 함께 확인하는 방법",
+    "양덕동": "흐릿한 영어 개념을 예문으로 분명히 하는 방법",
+    "수완지구": "방학 영어 계획과 다음 점검일을 함께 정하는 방법",
+    "신가동": "영어 학습 참여와 문장 설명을 함께 키우는 방법",
+    "신창지구": "영어 학습 흐름을 기록으로 관리하는 방법",
+    "쌍암동": "영어 학습 과정에서 막힌 지점을 살피는 방법",
+    "첨단": "영어 기초를 다음 문장 학습으로 잇는 점검 방법",
+    "첨단지구": "피드백 뒤 스스로 다시 설명하는 영어 학습",
+    "진월동": "영어 공부의 방향을 자료로 세우는 방법",
+    "주월동": "학교 영어 준비와 평소 학습 흐름을 나누는 방법",
+    "송천동": "아이의 현재 영어 수준에서 학습을 시작하는 방법",
+    "퇴계동": "방학 영어의 집중 영역과 학습 순서를 정하는 방법",
+    "후평동": "아이의 속도에 맞춰 영어 학습 기록을 조정하는 방법",
+    "연동": "짧은 학교 영어 범위를 깊이 이해하는 학습 방법",
+    "금곡동": "학교 단원과 짧은 글 읽기 기록으로 영어 기초를 점검하는 방법",
+    "조남동": "주간 영어 계획을 짧은 문장 쓰기 연습으로 연결하는 방법",
+    "매탄동": "초등 영어 기초와 학교 단원 학습의 순서를 정하는 방법",
+}
+
+
+ELEMENTARY_ENGLISH_FOCUS_OVERRIDES = {
+    # Editorial overrides are lower priority than the 16 audited source and
+    # elementary-to-middle transition contracts below.
+    **ELEMENTARY_ENGLISH_EDITORIAL_FOCUS_OVERRIDES,
+    **ELEMENTARY_ENGLISH_SAFE_FOCUS_OVERRIDES,
+    **ELEMENTARY_ENGLISH_MIDDLE_TRANSITION_FOCUS_OVERRIDES,
+}
+
+
+ELEMENTARY_ENGLISH_INTENT_OVERRIDES: dict[str, tuple[str, str, str, str]] = {
+    "탄벌동": ("sentence", "vocabulary", "reading", "diagnosis"),
+    "권선동": ("sentence", "grammar", "reading", "diagnosis"),
+    "옥길동": ("grammar", "routine", "vocabulary", "diagnosis"),
+}
+
+
+def safe_elementary_english_phrase(value: str, locality: str = "") -> str:
+    """Keep the source angle while removing older-student and service claims."""
+
+    value = clean(value)
+    if locality:
+        value = re.sub(rf"(?<![가-힣]){re.escape(locality)}(?![가-힣])", " ", value)
+    value = re.sub(r"초등\s*영어학원(?:에서|으로|의)?", " ", value)
+    replacements = (
+        (r"내신과\s*모의고사", "학교 학습과 처음 보는 글"),
+        (r"내신[·\s]*모의고사", "학교 학습과 새 글 읽기"),
+        (r"중1\s*첫\s*시험", "다음 학년 영어 준비"),
+        (r"예비\s*중학생", "다음 학년을 준비하는 학생"),
+        (r"중학교\s*입학\s*전", "다음 학년 시작 전"),
+        (r"중학교\s*영어", "다음 학년 영어"),
+        (r"중등\s*내신", "다음 학년 학교 영어"),
+        (r"중등\s*영어", "다음 학년 영어"),
+        (r"중학생|중학교|중등", "다음 학년"),
+        (r"고등\s*어휘", "기초 어휘"),
+        (r"고등학생|고등학교|고등", "다음 단계"),
+        (r"수능\s*영어|수능", "영어 기초"),
+        (r"모의고사", "처음 보는 글"),
+        (r"수학|국어", "영어"),
+        (r"입시(?:종합관리|로드맵|분석|설계|계획|평가|준비|전략|상담)?", "장기 학습 계획"),
+        (r"내신", "학교 영어"),
+        (r"중간고사|기말고사", "학교 단원 확인"),
+        (r"서술형", "짧은 문장 쓰기"),
+        (r"수행평가", "학교 영어 활동"),
+        (r"개별\s*지도", "학생별 학습 안내"),
+        (r"방학\s*특강", "방학 영어 학습 계획"),
+        (r"방학\s*집중반", "방학 영어 집중 계획"),
+        (r"정규반|집중반|시험\s*대비반|특강\s*수업", "영어 학습 계획"),
+        (r"1\s*:\s*1|일대일|개인\s*과외", "학생별 학습 점검"),
+        (r"소수\s*정예", "학습 과정 확인"),
+        (r"화상\s*수업|녹화\s*수업|온라인\s*수업|대면\s*수업", "영어 학습"),
+        (r"오전\s*수업|주말\s*수업|그룹\s*수업|집중\s*수업", "영어 학습"),
+        (r"매일\s*관리", "매일의 학습 기록"),
+        (r"맞춤(?:형)?\s*(?:코칭|학습|관리|수업)?", "학생별 학습 점검"),
+        (r"밀착\s*(?:관리|코칭)", "학습 과정 점검"),
+        (r"입시", "학습 계획"),
+        (r"성적\s*(?:향상|상승)|점수\s*(?:향상|상승)|1등급|상위권", "학습 변화 확인"),
+        (r"완성", "기초 확인"),
+        (r"자신감", "학습 참여"),
+        (r"스스로\s*공부하는\s*힘을\s*키우는", "스스로 설명하는 과정을 확인하는"),
+        (r"매일\s*성장하는", "매일의 기록으로 확인하는"),
+        (r"학습코칭", "학습 점검"),
+        (r"수업", "학습"),
+    )
+    for pattern, replacement in replacements:
+        value = re.sub(pattern, replacement, value)
+    compounds = (
+        ("자기주도", "자기 주도"),
+        ("학습기록", "학습 기록"),
+        ("학습습관", "학습 습관"),
+        ("학습관리", "학습 점검"),
+        ("학습설계", "학습 계획"),
+        ("학습진단", "학습 진단"),
+        ("문장구조", "문장 구조"),
+        ("기초문법", "기초 문법"),
+        ("단원평가", "단원 확인"),
+        ("오답관리", "틀린 이유 점검"),
+        ("학습로드맵", "학습 순서"),
+        ("학습클리닉", "학습 점검"),
+        ("학습목표", "학습 목표"),
+        ("학습자율성", "학습 자율성"),
+        ("학습취약점", "학습 취약점"),
+        ("학습연습", "영어 연습"),
+        ("학습실전", "실제 학습"),
+        ("준비피드백", "준비 과정 피드백"),
+        ("집중점검학습", "집중 학습 점검"),
+        ("과제점검학습", "과제와 학습 점검"),
+        ("영어피드백", "영어 피드백"),
+        ("오후학습", "오후 영어 학습"),
+        ("학원학습", "학원에서의 학습"),
+        ("학습반복", "반복 학습"),
+        ("학원프로그램", "학원 학습 과정"),
+        ("준비종합점검", "준비 상태 종합 점검"),
+        ("학습자립도", "학습 자립도"),
+        ("내신보충학습", "학교 영어 보충 학습"),
+        ("학습진단", "학습 진단"),
+        ("학습기록", "학습 기록"),
+        ("학습이력", "학습 이력"),
+        ("대면학습", "학습 과정"),
+        ("학습플래너", "학습 계획표"),
+        ("화상학습", "영어 학습"),
+        ("학습성취도", "학습 변화"),
+        ("내신학습", "학교 영어 학습"),
+        ("오답노트", "틀린 이유 기록"),
+        ("시험복습", "학교 영어 복습"),
+        ("학교시험", "학교 단원 확인"),
+        ("시험분석", "학습 기록 분석"),
+        ("시험오답", "틀린 이유 기록"),
+        ("시험전략", "학교 영어 준비 순서"),
+        ("구문독해", "문장 읽기"),
+        ("목표점검", "목표 점검"),
+        ("일정점검", "일정 점검"),
+        ("내신진도점검", "학교 진도 점검"),
+        ("내신상담", "학교 영어 상담"),
+        ("문제풀이", "학습 활동"),
+        ("자기주도", "자기 주도"),
+        ("내신시험", "학교 단원 확인"),
+    )
+    for before, after in compounds:
+        value = value.replace(before, after)
+    value = re.sub(
+        r"틀린\s*문법을\s*실력으로(?:\s*바꾸는)?",
+        "틀린 문법을 다시 확인하는",
+        value,
+    )
+    value = re.sub(
+        r"(?:흔들림\s+없는\s+성적|꾸준한\s+성적을\s+만드는|성적\s+기복을\s+줄이는)",
+        "영어 학습 변화를 기록하는",
+        value,
+    )
+    value = value.replace(
+        "학생별 학습 안내 학습 안내", "학생별 영어 학습 안내"
+    )
+    value = value.replace("학생별 학생별", "학생별")
+    value = repair_elementary_english_focus(value)
+    forbidden = re.compile(
+        r"(?:중1|중등|중학생|중학교|고[123]|고등|고등학생|고등학교|수능|모의고사|입시|전국연합|등급)"
+    )
+    if not value or len(value) > 64 or forbidden.search(value):
+        return "초등 영어 학습의 출발점을 확인하는 방법"
+    return value
+
+
+def elementary_english_profile(raw: str, locality: str) -> ElementaryEnglishProfile:
+    h1_values = source_tag_texts(raw, "h1")
+    if not h1_values:
+        raise ValueError(f"{locality}: elementary English source H1 missing")
+    source_title = h1_values[0]
+    focus = ELEMENTARY_ENGLISH_FOCUS_OVERRIDES.get(
+        locality, safe_elementary_english_phrase(source_title, locality)
+    )
+    strong_values = source_tag_texts(raw, "strong")
+    h3_values = [re.sub(r"^\d+\.\s*", "", value) for value in source_tag_texts(raw, "h3")]
+    li_values = source_tag_texts(raw, "li")
+    # The workbook title is useful as a topic signal only after sanitising it.
+    # Keeping the raw title here would let the nine known subject/level errors
+    # steer an elementary page back toward maths, high school or mock exams.
+    parts: list[tuple[str, int]] = [
+        (focus, 40),
+        (safe_elementary_english_phrase(source_title, locality), 5),
+    ]
+    parts.extend((safe_elementary_english_phrase(value), 4) for value in strong_values)
+    parts.extend((safe_elementary_english_phrase(value), 2) for value in h3_values[-4:])
+    parts.extend((safe_elementary_english_phrase(value), 1) for value in li_values)
+    scores = {
+        intent.code: sum(
+            weight * sum(text.count(keyword) for keyword in intent.keywords)
+            for text, weight in parts
+        )
+        for intent in ELEMENTARY_ENGLISH_INTENTS
+    }
+    compact_source = re.sub(r"\s+", "", source_title)
+    forced_code = (
+        "next_stage"
+        if locality in ELEMENTARY_ENGLISH_MIDDLE_TRANSITION_FOCUS_OVERRIDES
+        else None
+    )
+    forced_markers = (
+        ("phonics", ("파닉스", "알파벳", "소리내어읽")),
+        ("listening", ("듣기", "음원")),
+        ("speaking", ("말하기", "발표", "질문과답변")),
+        ("writing", ("영작", "쓰기", "서술형")),
+        ("next_stage", ("다음학년", "입학전")),
+        ("school", ("내신", "중간고사", "기말고사", "단원평가", "시험대비")),
+    )
+    safe_compact_source = re.sub(
+        r"\s+", "", safe_elementary_english_phrase(source_title, locality)
+    )
+    for code, markers in forced_markers:
+        if forced_code is None and any(marker in safe_compact_source for marker in markers):
+            forced_code = code
+            break
+    ranked = sorted(
+        ELEMENTARY_ENGLISH_INTENTS,
+        key=lambda intent: (-scores[intent.code], intent.code),
+    )
+    if locality not in ELEMENTARY_ENGLISH_MIDDLE_TRANSITION_FOCUS_OVERRIDES:
+        ranked = [intent for intent in ranked if intent.code != "next_stage"]
+    if locality in ELEMENTARY_ENGLISH_INTENT_OVERRIDES:
+        chosen = tuple(
+            ELEMENTARY_ENGLISH_INTENT_BY_CODE[code]
+            for code in ELEMENTARY_ENGLISH_INTENT_OVERRIDES[locality]
+        )
+        return ElementaryEnglishProfile(
+            focus=focus,
+            source_title=source_title,
+            intents=chosen,
+            source_markers=tuple(intent.label for intent in chosen),
+        )
+    primary = (
+        ELEMENTARY_ENGLISH_INTENT_BY_CODE[forced_code]
+        if forced_code
+        else ranked[0] if scores[ranked[0].code] > 0
+        else ELEMENTARY_ENGLISH_INTENT_BY_CODE["diagnosis"]
+    )
+    selected: list[HighEnglishIntent] = [primary]
+    selected.extend(
+        intent for intent in ranked
+        if intent not in selected
+        and scores[intent.code] > 0
+        and (
+            intent.code != "next_stage"
+            or locality in ELEMENTARY_ENGLISH_MIDDLE_TRANSITION_FOCUS_OVERRIDES
+        )
+    )
+    fallback_codes = (
+        "diagnosis", "vocabulary", "sentence", "reading", "routine", "independence",
+        "phonics", "grammar", "listening", "speaking", "writing", "school", "error",
+    )
+    start = stable_int(f"{locality}|{focus}", "elementary-intent-fill") % len(fallback_codes)
+    selected.extend(
+        ELEMENTARY_ENGLISH_INTENT_BY_CODE[fallback_codes[(start + offset) % len(fallback_codes)]]
+        for offset in range(len(fallback_codes))
+        if ELEMENTARY_ENGLISH_INTENT_BY_CODE[fallback_codes[(start + offset) % len(fallback_codes)]] not in selected
+    )
+    chosen = tuple(selected[:4])
+    return ElementaryEnglishProfile(
+        focus=focus,
+        source_title=source_title,
+        intents=chosen,
+        source_markers=tuple(intent.label for intent in chosen),
     )
 
 
@@ -2056,7 +3519,7 @@ def high_math_focus_guidance(profile: HighMathProfile) -> tuple[str, str, str]:
     return (
         f"최근 시험지에서 ‘{primary.evidence}’와 ‘{secondary.evidence}’가 드러난 위치를 한 곳씩 표시하세요",
         f"이번 주에는 ‘{primary.action}’을 먼저 하고 ‘{secondary.action}’은 별도 문제에서 연습하세요",
-        f"다음 점검에서 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’에 학생이 직접 답하는지 확인하세요",
+        f"다음 점검에서 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 살피고 학생이 설명한 결과를 비교하세요",
     )
 
 
@@ -2832,7 +4295,13 @@ def relevant_schools(config: CategoryConfig, center: dict[str, object]) -> list[
     result: list[str] = []
     for column in config.school_columns:
         result.extend(center["schools"][column])  # type: ignore[index]
-    return list(dict.fromkeys(result))
+    # ``기타사립초`` is a source-side grouping label, not a verifiable school
+    # name.  Keep it out of reader-facing school lists and organization schema.
+    return [
+        value
+        for value in dict.fromkeys(result)
+        if value not in {"기타사립초"}
+    ]
 
 
 def signal_bank(config: CategoryConfig, subject: str) -> tuple[TopicSignal, ...]:
@@ -3218,7 +4687,7 @@ def high_english_focus_guidance(profile: HighEnglishProfile) -> tuple[str, str, 
     return (
         f"‘{primary.evidence}’와 ‘{secondary.evidence}’를 나란히 놓고 현재의 병목을 자료로 확인하세요",
         f"이번 주에는 ‘{primary.action}’을 먼저 실행하고 ‘{secondary.action}’은 별도 날짜에 배치하세요",
-        f"다음 점검에서 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’에 학생이 직접 답하는지 비교하세요",
+        f"다음 점검에서 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 살피고 학생이 설명한 결과를 비교하세요",
     )
 
 
@@ -3242,7 +4711,7 @@ def high_english_quick_answer(
     endings = (
         f"이 과정을 마친 뒤 {primary.label} 기록과 {secondary.label} 기록을 비교해 다음 순서를 정하세요.",
         f"마지막에는 {primary.label}의 변화와 {secondary.label}의 남은 질문을 다른 칸에 적으세요.",
-        f"확인 결과는 {primary.label}의 첫 행동과 {secondary.label}의 재확인 날짜로 나누어 남기면 됩니다.",
+        f"확인 결과는 {primary.label} 관련 첫 행동과 {secondary.label}의 재확인 날짜로 나누어 남기면 됩니다.",
         f"센터 이용 조건은 별도 표에 두고, 학습 기록에서는 {primary.label}과 {secondary.label}만 비교하세요.",
         f"학생이 직접 설명한 내용은 {primary.label}·{secondary.label}의 다음 주 분량을 정하는 근거가 됩니다.",
         f"두 기록이 달라진 이유를 적으면 {primary.label}과 {secondary.label}을 함께 할지 순서를 나눌지 판단할 수 있습니다.",
@@ -3520,39 +4989,39 @@ def high_english_sections(
 
     direct_paragraphs = [
         stable_pick(seed, "high-direct-p1", [
-            f"{locality} 고등 영어의 핵심 질문은 ‘{profile.focus}’입니다. 최근 점수보다 먼저 ‘{primary.concern}’를 시험지의 실제 표시와 대조하세요.",
-            f"{locality}에서 살필 고등 영어 주제는 ‘{profile.focus}’입니다. 학생에게 ‘{primary.concern}’를 묻고 답을 최근 풀이 흔적과 비교하세요.",
-            f"{locality} 고등 영어를 비교할 때는 ‘{profile.focus}’부터 구체화합니다. 첫 질문은 ‘{primary.concern}’이며, 답은 성적표가 아니라 최근 시험지에서 확인합니다.",
-            f"{locality} 학생의 출발점을 정하는 질문은 ‘{profile.focus}’입니다. 먼저 ‘{primary.concern}’에 학생이 직접 답하게 하고 풀이 기록과 맞는지 봅니다.",
-            f"{locality} 고등 영어 상담의 첫 주제는 ‘{profile.focus}’입니다. ‘{primary.concern}’를 묻고 정답 수보다 답을 고른 과정을 확인하세요.",
+            f"{locality} 고등 영어의 핵심 질문은 ‘{profile.focus}’입니다. 먼저 ‘{primary.concern}’를 시험지의 실제 표시와 대조하세요.",
+            f"{locality}에서 살필 고등 영어 주제는 ‘{profile.focus}’입니다. 학생에게 ‘{primary.concern}’를 묻고 답을 최근 학습 기록과 비교하세요.",
+            f"{locality} 고등 영어를 비교할 때는 ‘{profile.focus}’부터 구체화합니다. 첫 질문은 ‘{primary.concern}’이며, 답은 최근 학습 자료에서 확인합니다.",
+            f"{locality} 학생의 출발점을 정하는 질문은 ‘{profile.focus}’입니다. 먼저 ‘{primary.concern}’를 묻고 학생의 답이 실제 기록과 맞는지 봅니다.",
+            f"{locality} 고등 영어 상담의 첫 주제는 ‘{profile.focus}’입니다. ‘{primary.concern}’를 묻고 아이의 답과 실제 기록이 맞는지 확인하세요.",
             f"{locality}에서 고등 영어 계획을 세울 때 ‘{profile.focus}’을 첫 질문으로 둡니다. ‘{primary.concern}’가 실제 자료에서도 드러나는지부터 확인하세요.",
         ]),
         stable_pick(seed, "high-direct-p2", [
-            f"다음으로 ‘{secondary.concern}’를 따로 확인하고 두 답이 모두 흔들리면 {primary.label}과 {secondary.label}을 한 과제로 묶지 말고 먼저 설명할 영역을 고르세요.",
-            f"이어 ‘{secondary.concern}’도 별도 질문으로 남기고 답변과 풀이 흔적이 어긋난 지점을 찾아 {primary.label}과 {secondary.label}의 순서를 현실적으로 정하세요.",
-            f"두 번째 질문은 ‘{secondary.concern}’이며 한 영역에서만 막혔다면 그 부분부터 보완하고, 둘 다 어렵다면 {primary.label}을 먼저 설명한 뒤 {secondary.label}을 재확인하세요.",
+            f"다음으로 ‘{secondary.concern}’를 따로 확인하고 두 답이 모두 흔들리면 {primary.label}과 {secondary.label}을 한 과제로 묶지 말고 먼저 도울 영역을 고르세요.",
+            f"이어 ‘{secondary.concern}’도 별도 질문으로 남기고 답변과 실제 기록이 어긋난 지점을 찾아 {primary.label}과 {secondary.label}의 순서를 현실적으로 정하세요.",
+            f"두 번째 질문은 ‘{secondary.concern}’이며 한 영역에서만 막혔다면 그 부분부터 보완하고, 둘 다 어렵다면 {primary.label}을 먼저 도운 뒤 {secondary.label}을 재확인하세요.",
             f"이후 ‘{secondary.concern}’를 물어 원인을 나누고 {primary.label}과 {secondary.label}의 어려움을 구분해 교재나 문제 수를 늘리기 전 첫 행동을 정하세요.",
             f"‘{secondary.concern}’까지 확인한 뒤 두 답을 나란히 적고 학생 설명과 기록이 일치하는 영역부터 {primary.label}·{secondary.label}의 학습 순서를 잡습니다.",
-            f"끝으로 ‘{secondary.concern}’를 확인해 단순 실수와 반복되는 병목을 구분하고 {primary.label}에 설명이 필요한지, {secondary.label}을 혼자 연습할지 판단하세요.",
+            f"끝으로 ‘{secondary.concern}’를 확인해 단순 실수와 반복되는 병목을 구분하고, 각 영역에 추가 도움이 필요한지 또는 혼자 다시 해 볼 수 있는지 판단하세요.",
         ]),
     ]
 
     evidence_paragraphs = [
         stable_pick(seed, "high-evidence-p1", [
-            f"진단 자료에서는 ‘{primary.evidence}’와 ‘{secondary.evidence}’를 한 곳씩 표시하고 자료 위치·날짜·처음 판단한 이유가 달라진 지점을 남기세요.",
-            f"최근 시험지와 교재에서 ‘{primary.evidence}’를 먼저 찾고 ‘{secondary.evidence}’를 다른 색으로 표시해 정답보다 판단이 바뀐 위치를 기록하세요.",
-            f"많은 자료보다 역할이 다른 두 기록이 낫기 때문에 ‘{primary.evidence}’는 현재선, ‘{secondary.evidence}’는 풀이 과정으로 두고 같은 날짜 기준으로 비교하세요.",
-            f"첫 풀이를 지우지 말고 ‘{primary.evidence}’와 ‘{secondary.evidence}’를 나란히 두어 도움을 받기 전후로 달라진 근거를 한 줄씩 적으세요.",
-            f"진단할 때는 ‘{primary.evidence}’와 ‘{secondary.evidence}’가 보이는 자료만 고르고 처음 답의 이유와 수정한 이유를 나눠 지식 부족과 절차 문제를 구분하세요.",
-            f"시험지나 학습표에서 ‘{primary.evidence}’를 표시한 뒤 ‘{secondary.evidence}’와 비교하고 자료 위치·날짜·수정 이유를 남겨 우연한 실수인지 반복되는 문제인지 확인하세요.",
+            f"진단 자료에서는 ‘{primary.evidence}’와 ‘{secondary.evidence}’를 한 곳씩 표시하세요. 각 근거가 있는 자료의 위치와 날짜를 적고, 처음 확인한 상태와 도움 뒤 다시 확인한 상태를 나누어 남기세요.",
+            f"‘{primary.evidence}’를 먼저 찾고 ‘{secondary.evidence}’를 다른 색으로 표시해 처음 기록과 도움 뒤 달라진 위치를 적으세요.",
+            f"많은 자료를 모으기보다 역할이 다른 두 기록을 고르세요. ‘{primary.evidence}’는 현재선, ‘{secondary.evidence}’는 활동 과정으로 두고 같은 관찰 기간 안에서 각 기록의 날짜를 나누어 확인합니다.",
+            f"아이의 첫 기록을 지우지 말고 ‘{primary.evidence}’와 ‘{secondary.evidence}’를 나란히 두어 도움을 받기 전후로 달라진 근거를 한 줄씩 적으세요.",
+            f"진단할 때는 ‘{primary.evidence}’와 ‘{secondary.evidence}’가 보이는 자료만 고르세요. 처음 기록과 도움 뒤 달라진 기록을 나누어 놓고, 알고 있는 내용과 실행 과정을 구분합니다.",
+            f"시험지나 학습표에서 ‘{primary.evidence}’를 표시한 뒤 ‘{secondary.evidence}’와 비교하고 자료 위치·날짜·처음 확인한 내용을 남겨 한 번만 나타난 지점인지 반복되는 어려움인지 살피세요.",
         ]),
         stable_pick(seed, "high-evidence-p2", [
-            f"다시 볼 날짜에는 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 차례로 묻습니다. 두 답의 변화가 이 학습 초점에 필요한 설명과 독립 연습을 나누는 기준입니다.",
-            f"재확인표에는 ‘{primary.checkpoint}’를 첫 질문으로, ‘{secondary.checkpoint}’를 두 번째 질문으로 적습니다. 답을 학생이 혼자 설명해야 앞서 정한 초점의 다음 행동을 고를 수 있습니다.",
-            f"첫 기록과 재풀이 기록을 비교할 때는 ‘{primary.checkpoint}’에 답한 근거와 ‘{secondary.checkpoint}’의 변화를 함께 봅니다. 그 차이로 계속 보완할 부분을 판단하세요.",
-            f"다음 점검에서도 같은 시험지를 사용하되 질문은 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’로 고정합니다. 이 기준이면 처음 세운 학습 방향의 변화 여부를 확인하기 쉽습니다.",
-            f"각 표시 옆에는 ‘{primary.checkpoint}’ 또는 ‘{secondary.checkpoint}’ 중 해당 질문을 붙이고 재확인 날짜를 적습니다. 이 기록으로 {primary.label}과 {secondary.label}에 필요한 피드백을 구체화합니다.",
-            f"도움 없이 다시 수행한 날에는 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’에 학생이 직접 답하게 하세요. 첫 자료와 비교하면 설명·연습·재확인의 순서가 분명해집니다.",
+            f"다시 볼 날짜에는 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 차례로 살핍니다. 두 결과의 변화가 이 학습 초점에 필요한 도움과 독립 연습을 나누는 기준입니다.",
+            f"재확인표에는 ‘{primary.checkpoint}’를 첫 항목으로, ‘{secondary.checkpoint}’를 두 번째 항목으로 적습니다. 아이가 혼자 수행한 결과를 봐야 앞서 정한 초점의 다음 행동을 고를 수 있습니다.",
+            f"첫 기록과 다시 확인한 기록을 비교할 때는 ‘{primary.checkpoint}’의 결과와 ‘{secondary.checkpoint}’의 변화를 함께 봅니다. 그 차이로 계속 보완할 부분을 판단하세요.",
+            f"다음 점검에서도 같은 기준선 자료를 사용하되 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 같은 순서로 살핍니다. 첫 기록과 비교하면 아이의 설명과 수행이 달라졌는지 확인하기 쉽습니다.",
+            f"각 표시 옆에는 ‘{primary.checkpoint}’ 또는 ‘{secondary.checkpoint}’ 중 해당 기준을 붙이고 재확인 날짜를 적습니다. 이 기록으로 {primary.label}과 {secondary.label}에 필요한 피드백을 구체화합니다.",
+            f"도움 없이 다시 수행한 날에는 ‘{primary.checkpoint}’와 ‘{secondary.checkpoint}’를 살피고 달라진 지점을 기록하세요. 첫 자료와 비교하면 도움·연습·재확인의 순서가 분명해집니다.",
         ]),
     ]
 
@@ -3562,14 +5031,14 @@ def high_english_sections(
             f"학교 시험과 모의고사는 같은 문제 수로 계획하지 않습니다. 각각의 자료에서 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’가 필요한 지점을 찾아 완료 기준을 나누세요.",
             f"내신은 정해진 범위의 이해와 변형 조건을, 모의고사는 새 지문의 근거와 시간을 확인합니다. {primary.label}과 {secondary.label}은 한 시험에 고정하지 말고 두 자료에서 모두 대조하세요.",
             f"시험 일정표에서 내신 범위와 모의고사 누적 약점을 다른 줄에 둡니다. 이어 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’를 각 자료에 적용할지 판단하세요.",
-            f"학교 자료의 마감일과 다음 점검 날짜를 분리한 뒤 {primary.label}·{secondary.label}의 최소 행동을 각 일정에 맞게 배치하세요.",
+            f"학교 자료의 마감일과 다음 점검 날짜를 분리한 뒤 {primary.label}·{secondary.label} 관련 최소 행동을 각 일정에 맞게 배치하세요.",
             f"내신 기간에도 누적 학습을 완전히 멈추지 마세요. ‘{primary.exam_use}’와 ‘{secondary.exam_use}’를 살펴 학교 범위와 새 지문에 필요한 시간을 따로 남깁니다.",
         ]),
         stable_pick(seed, "high-exam-p2", [
-            f"이번 주에는 학교 범위에 적용할 {primary.label}·{secondary.label} 행동과 새 지문에서 확인할 행동을 각각 한 줄씩 정합니다. 시험 뒤 네 기록을 비교해 공통 기초와 시험별 문제를 구분하세요.",
-            f"내신 마감일과 모의고사 재확인일을 달력에 따로 표시하고 두 일정마다 {primary.label}과 {secondary.label}의 최소 분량을 적으세요. 한쪽이 밀리면 다음 주 비중을 조정합니다.",
+            f"이번 주에는 학교 범위의 {primary.label}·{secondary.label} 행동과 새 지문의 {primary.label}·{secondary.label} 행동을 각각 한 줄씩 정합니다. 시험 뒤에는 네 행동의 완료 기록을 비교해 공통 기초와 자료별 문제를 구분하세요.",
+            f"내신 마감일과 모의고사 재확인일을 달력에 따로 표시하고 두 일정마다 {primary.label}·{secondary.label} 관련 활동의 최소 분량을 적으세요. 한쪽이 밀리면 다음 주 비중을 조정합니다.",
             f"정해진 학교 범위와 처음 보는 지문에서 {primary.label}·{secondary.label}이 각각 어떻게 드러나는지 확인하세요. 자료별 완료 기준으로 시험 전후의 우선순위를 다시 세웁니다.",
-            f"주간 계획에는 {primary.label}과 {secondary.label}의 최소 행동을 각각 한 줄로 남깁니다. 시험 뒤에는 점수보다 근거·시간·독립 수행 기록의 변화를 비교하세요.",
+            f"주간 계획에는 {primary.label}·{secondary.label} 관련 최소 행동을 각각 한 줄로 남깁니다. 시험 뒤에는 점수보다 근거·시간·독립 수행 기록의 변화를 비교하세요.",
             f"{primary.label} 기록과 {secondary.label} 기록은 구분하되 내신·모의고사 자료를 모두 연결하세요. 남은 날짜와 실제 완료량으로 다음 주의 설명·연습 비중을 정합니다.",
             f"내신 종료 뒤 학교 범위 기록과 모의고사 누적 기록을 함께 봅니다. 두 자료에서 {primary.label}·{secondary.label}의 겹치는 약점과 다른 절차를 구분해 다음 계획에 반영하세요.",
         ]),
@@ -3601,16 +5070,16 @@ def high_english_sections(
             f"상담 준비용 학교명은 {school_names} 등으로 정리돼 있으나",
             f"내신 자료를 대조할 참고 학교에는 {school_names} 등이 적혀 있지만",
             f"공개 자료에 {school_names} 등이 학교명으로 보이지만",
-            f"학교 범위를 확인할 때 참고할 명칭에는 {school_names} 등이 포함돼 있으나",
+            f"학교별 학습 범위를 확인할 때 참고할 명칭에는 {school_names} 등이 포함돼 있으나",
             f"제공 목록에서는 {school_names} 등을 확인할 수 있지만",
         ])
         school_close = stable_pick(seed, "high-school-close", [
             "이 목록만으로 해당 학교 학생의 수업 가능 여부를 판단할 수는 없습니다",
-            "실제 재학 학교의 범위와 현재 자료 반영 가능 여부는 따로 확인해야 합니다",
+            "실제 재학 학교의 학습 범위와 현재 자료 반영 가능 여부는 따로 확인해야 합니다",
             "현재 개설 범위와 학교별 시험 자료 반영 여부는 상담에서 확인해야 합니다",
             "학생의 실제 학교와 시험 범위를 알려 자료 반영 가능 여부를 대조해야 합니다",
             "학교명보다 실제 시험 범위표와 현재 수업 가능 여부를 먼저 확인해야 합니다",
-            "이 명칭은 참고용이므로 재학 학교의 범위와 개설 여부를 별도로 물어야 합니다",
+            "이 명칭은 참고용이므로 재학 학교의 학습 범위와 개설 여부를 별도로 물어야 합니다",
             "학교별 진도와 자료 반영 방식은 목록이 아니라 상담 시점의 답변으로 판단해야 합니다",
             "해당 학교의 모든 과정이 열린다는 뜻은 아니므로 현재 범위를 다시 확인해야 합니다",
         ])
@@ -3620,11 +5089,11 @@ def high_english_sections(
             "공개된 참고 고등학교 목록은 없습니다. 실제 재학 학교와 시험 범위표를 알려 현재 자료 반영 가능 여부를 확인하세요.",
             "제공 자료에 참고 고등학교가 기재돼 있지 않습니다. 학생의 학교와 시험 범위를 상담에서 직접 전달해야 합니다.",
             "이 페이지에는 참고 학교 목록이 없습니다. 학교명만 추정하지 말고 실제 범위표와 현재 개설 범위를 대조하세요.",
-            "상담 준비용 고등학교 명칭이 공개돼 있지 않습니다. 재학 학교·시험 범위·현재 진도를 직접 알려 주세요.",
-            "확인 가능한 참고 학교 정보가 없습니다. 학생이 다니는 학교와 최근 시험 자료를 기준으로 반영 가능 여부를 물어야 합니다.",
+            "상담 준비용 고등학교 명칭이 공개돼 있지 않습니다. 상담할 때 학생이 다니는 학교명·시험 범위·현재 진도를 담당자에게 알려 주세요.",
+            "확인 가능한 참고 학교 정보가 없습니다. 학생이 다니는 학교명과 최근 시험 자료를 기준으로 반영 가능 여부를 물어야 합니다.",
             "학교 목록은 제공되지 않았습니다. 실제 재학 학교의 시험 일정과 자료를 상담 시점에 확인하세요.",
             "공개 자료만으로 참고 고등학교를 특정할 수 없습니다. 학교 범위표를 가져가 현재 수업에 반영할 수 있는지 물어보세요.",
-            "기재된 참고 학교가 없으므로 학생의 재학 학교와 범위 자료를 별도 확인 항목으로 준비해야 합니다.",
+            "기재된 참고 학교가 없으므로 학생이 다니는 학교명과 진도 범위 자료를 별도 확인 항목으로 준비해야 합니다.",
         ])
 
     if grades:
@@ -3693,20 +5162,20 @@ def high_english_sections(
 
     plan_paragraphs = [
         stable_pick(seed, "high-plan-p1", [
-            f"첫 7일에는 ‘{primary.evidence}’를 기준선으로 남깁니다. 이번 주 실행 항목은 ‘{primary.action}’이며 하루 분량보다 완료 흔적을 기록하는 일이 우선입니다.",
+            f"첫 7일에는 ‘{primary.evidence}’를 기준선으로 남깁니다. 이번 주 실행 항목은 ‘{primary.action}’으로 정하고 하루 분량보다 정한 행동을 끝냈는지 먼저 살핍니다.",
             f"7일 계획의 출발점은 ‘{primary.evidence}’입니다. 첫 행동을 ‘{primary.action}’으로 정하고 시작일·완료일·남은 질문을 한 줄씩 적으세요.",
             f"첫 주에는 ‘{primary.evidence}’에서 한 가지 병목만 고릅니다. 실행 항목은 ‘{primary.action}’이며 새 교재나 추가 문제는 재확인 뒤에 결정하세요.",
             f"기준선 자료로 ‘{primary.evidence}’를 보존하세요. 7일 동안 ‘{primary.action}’을 해 보고 도움을 받은 지점과 혼자 한 지점을 구분합니다.",
-            f"처음 7일은 진도를 늘리는 기간이 아닙니다. ‘{primary.evidence}’를 남기고 실행 항목 ‘{primary.action}’의 완료 여부부터 확인하세요.",
-            f"주간 계획표 첫 줄에 ‘{primary.evidence}’를 적습니다. 이후 ‘{primary.action}’을 실행하고 실제로 끝낸 날짜와 수정한 이유를 기록하세요.",
+            f"처음 7일은 진도를 늘리는 기간이 아닙니다. ‘{primary.evidence}’를 남긴 뒤 ‘{primary.action}’을 먼저 실행하고, 실제로 마친 범위와 도움받은 지점을 확인하세요.",
+            f"주간 계획표 첫 줄에 ‘{primary.evidence}’를 적습니다. 이후 ‘{primary.action}’을 실행하고 실제로 끝낸 범위와 도움받은 지점을 기록하세요.",
         ]),
         stable_pick(seed, "high-plan-p2", [
-            f"7일 뒤에는 ‘{primary.checkpoint}’를 다시 묻습니다. 학생이 혼자 답하면 ‘{secondary.action}’으로 넘어가고, 어렵다면 첫 행동을 더 작은 분량으로 반복하세요.",
-            f"다음 점검 질문은 ‘{primary.checkpoint}’입니다. 답이 불분명하면 ‘{primary.action}’의 설명 단계를 보완하고, 분명하면 ‘{secondary.action}’을 다음 주 행동으로 정합니다.",
-            f"일주일 뒤 ‘{primary.checkpoint}’를 같은 자료로 확인합니다. 첫 기록과 달라진 근거가 있을 때만 ‘{secondary.action}’을 새 과제로 추가하세요.",
+            f"7일 뒤에는 ‘{primary.checkpoint}’를 다시 살핍니다. 아이가 재확인 기준을 혼자 충족하면 ‘{secondary.action}’으로 넘어가고, 어렵다면 첫 행동을 더 작은 분량으로 반복하세요.",
+            f"다음 점검 질문은 ‘{primary.checkpoint}’입니다. 결과가 불분명하면 ‘{primary.action}’을 더 작은 단계로 나눠 다시 실행하고, 분명하면 ‘{secondary.action}’을 다음 주 행동으로 정합니다.",
+            f"‘{primary.checkpoint}’를 첫 기록과 비교하고 달라진 근거를 확인한 뒤 다음 주 행동을 정합니다.",
             f"재확인 기준은 ‘{primary.checkpoint}’입니다. 완료하지 못한 이유가 분량인지 이해인지 나눈 뒤 ‘{primary.action}’을 유지할지 ‘{secondary.action}’으로 옮길지 결정합니다.",
-            f"마지막 날에는 ‘{primary.checkpoint}’에 학생이 직접 답합니다. 답을 근거로 첫 행동을 다시 설명할지, ‘{secondary.action}’을 시작할지 선택하세요.",
-            f"7일째에는 ‘{primary.checkpoint}’를 첫 기록과 대조합니다. 변화가 없으면 문제 수를 늘리지 말고 ‘{primary.action}’의 순서를 단순화한 뒤 다시 확인합니다.",
+            f"마지막 날에는 ‘{primary.checkpoint}’를 살피고 달라진 점을 기록합니다. 그 결과를 근거로 첫 행동을 반복할지, ‘{secondary.action}’을 시작할지 선택하세요.",
+            f"7일째에는 ‘{primary.checkpoint}’를 첫 기록과 대조합니다. 변화가 없으면 분량을 늘리지 말고 ‘{primary.action}’을 더 작은 단계로 나눈 뒤 다시 확인합니다.",
         ]),
     ]
 
@@ -3723,29 +5192,29 @@ def high_english_sections(
             f"상담에는 표시가 남아 있는 시험지와 학교 범위표를 가져갑니다. ‘{primary.consult_question}’와 ‘{secondary.consult_question}’를 차례로 물으세요.",
             f"최근 시험지 한 장과 현재 교재를 준비하세요. 첫 질문은 ‘{primary.consult_question}’, 두 번째는 ‘{secondary.consult_question}’입니다.",
             f"학교 범위표·최근 시험지·오답 기록 중 실제 표시가 있는 자료를 고릅니다. ‘{primary.consult_question}’와 ‘{secondary.consult_question}’를 메모해 가세요.",
-            f"좋은 상담 질문은 자료에서 시작합니다. 학생이 멈춘 시험지를 보여 주며 ‘{primary.consult_question}’, 이어 ‘{secondary.consult_question}’를 묻습니다.",
+            f"좋은 상담 질문은 자료에서 시작합니다. 학생이 멈춘 시험지를 보여 주며 ‘{primary.consult_question}’를 묻고, 이어 ‘{secondary.consult_question}’도 묻습니다.",
             f"상담 전 ‘{profile.focus}’을 설명할 최근 영어 자료와 가능한 가정 학습 시간을 적어 두세요. ‘{primary.consult_question}’와 ‘{secondary.consult_question}’를 분리해 질문합니다.",
             f"시험지에서 막힌 위치를 표시해 상담에 가져갑니다. ‘{primary.consult_question}’를 먼저 묻고 ‘{secondary.consult_question}’를 다음 질문으로 둡니다.",
         ]),
         stable_pick(seed, "high-consult-p2", [
-            f"답변은 {primary.label}의 첫 행동과 {secondary.label}의 재확인 날짜로 바꿔 적으세요. 주소·학년·시간표·교습비는 학습 질문과 다른 줄에 남깁니다.",
-            f"상담 메모에는 {primary.label}의 실행 항목과 {secondary.label}의 확인일이 남아야 합니다. 센터 이용 조건은 별도 목록으로 구분하세요.",
-            f"설명을 들은 뒤 {primary.label}의 시작 행동과 {secondary.label}의 완료 기준을 한 줄씩 적습니다. 학습 적합성과 등록 조건을 섞지 않아야 비교가 쉽습니다.",
-            f"답변이 {primary.label}의 실제 행동과 {secondary.label}의 점검일로 이어지는지 확인하세요. 운영 정보는 확인된 사실만 따로 기록합니다.",
-            f"마지막에는 {primary.label}을 누가 언제 확인하는지, {secondary.label}을 어떤 자료로 다시 볼지 적습니다. 시간표·교습비·통학은 별도 조건입니다.",
-            f"상담 뒤 학생이 {primary.label}의 첫 행동을 설명하게 하세요. {secondary.label}의 재확인 날짜와 센터 이용 조건은 서로 다른 칸에 적습니다.",
+            f"답변은 ‘{primary.action}’과 ‘{secondary.checkpoint}’를 살필 날짜로 바꿔 적으세요. 주소·학년·시간표·교습비는 학습 질문과 다른 줄에 남깁니다.",
+            f"상담 메모에는 ‘{primary.action}’의 실행일과 ‘{secondary.checkpoint}’의 확인일이 남아야 합니다. 센터 이용 조건은 별도 목록으로 구분하세요.",
+            f"설명을 들은 뒤 ‘{primary.action}’과 ‘{secondary.checkpoint}’를 한 줄씩 적습니다. 학습 적합성과 등록 조건을 섞지 않아야 비교가 쉽습니다.",
+            f"답변이 ‘{primary.action}’과 ‘{secondary.checkpoint}’의 점검일로 이어지는지 확인하세요. 운영 정보는 확인된 사실만 따로 기록합니다.",
+            f"마지막에는 ‘{primary.action}’을 누가 언제 실행하는지, ‘{secondary.checkpoint}’를 어떤 자료로 다시 볼지 적습니다. 시간표·교습비·통학은 별도 조건입니다.",
+            f"상담 뒤 학생이 ‘{primary.action}’을 어떻게 해 볼지 말하게 하세요. ‘{secondary.checkpoint}’를 살필 날짜와 센터 이용 조건은 서로 다른 칸에 적습니다.",
         ]),
     ]
 
     headings = [
         f"{locality} 고등 영어 첫 진단: {profile.focus}",
         stable_pick(seed, "high-heading-evidence", [
-            f"{secondary.label} 자료로 {primary.label}을 다시 확인하는 법",
+            f"{secondary.label} 자료로 {primary.label}을 살펴보는 법",
             f"진단에 필요한 {primary.label}·{secondary.label} 기록",
             f"시험지에서 {primary.label}·{secondary.label} 자료를 남기는 방법",
             f"{primary.label}·{secondary.label} 기록이 보여 주는 영어 학습의 현재선",
-            f"정답보다 먼저 볼 {primary.label}·{secondary.label} 풀이 흔적",
-            f"{primary.label}과 {secondary.label} 재확인 자료를 고르는 기준",
+            f"영어 자료에서 {primary.label}·{secondary.label}의 현재선을 찾는 방법",
+            f"{primary.label}과 {secondary.label} 점검 자료를 고르는 기준",
         ]),
         stable_pick(seed, "high-heading-exam", [
             f"내신과 모의고사에서 {primary.label}·{secondary.label} 기록을 나누는 방법",
@@ -3757,25 +5226,25 @@ def high_english_sections(
         ]),
         stable_pick(seed, "high-heading-facts", [
             f"{locality} {primary.label}·{secondary.label} 상담 전 학교·학년 확인 순서",
-            f"{locality} 센터 정보와 {primary.label}·{secondary.label} 질문을 구분하는 법",
+            f"{locality} 센터 정보와 {primary.label}·{secondary.label} 상담 항목을 구분하는 법",
             f"{locality} {primary.label} 상담 전 확인할 학교·학년·주소 정보",
             f"{secondary.label} 진단과 분리해 볼 {locality} 센터 이용 조건",
             f"{locality} 참고 학교와 {primary.label} 개설 범위를 대조하는 방법",
             f"{locality} {primary.label}의 확인된 사실과 상담에서 물을 항목",
         ]),
         stable_pick(seed, "high-heading-plan", [
-            f"7일 동안 {primary.label}을 실행하고 {secondary.label}을 재확인하는 방법",
+            f"{primary.label}·{secondary.label}을 구분해 기록하는 7일 점검",
             f"{primary.label}에서 {secondary.label}으로 이어지는 7일 영어 계획",
             f"한 가지 병목부터 시작하는 {primary.label}·{secondary.label} 7일 점검",
-            f"{primary.label}·{secondary.label}의 분량을 정하는 7일 실행안",
-            f"첫 기록과 재풀이를 연결하는 {primary.label} 7일 계획",
-            f"{primary.label}의 시작일과 {secondary.label}의 확인일을 정하는 법",
+            f"{primary.label}·{secondary.label}의 이번 주 행동을 정하는 7일 실행안",
+            f"{primary.label} 기록을 다음 행동으로 잇는 7일 계획",
+            f"{primary.label}·{secondary.label} 관련 활동일과 재확인일을 정하는 법",
         ]),
         stable_pick(seed, "high-heading-consult", [
             f"{primary.label}·{secondary.label} 상담 전 준비할 자료와 등록 확인 항목",
             f"상담에서 {primary.label}·{secondary.label}을 묻고 이용 조건을 확인하는 순서",
-            f"시험지와 범위표로 준비하는 {primary.label} 상담 질문",
-            f"{secondary.label} 재확인 질문과 센터 이용 조건을 나누는 방법",
+            f"시험지와 범위표로 준비하는 {primary.label} 상담 항목",
+            f"{secondary.label} 점검 항목과 센터 이용 조건을 나누는 방법",
             f"{primary.label}·{secondary.label} 답변을 실행 계획으로 바꾸는 상담 메모",
             f"{primary.label}·{secondary.label} 상담 전 가져갈 자료와 확인할 사실",
         ]),
@@ -3801,7 +5270,7 @@ def high_english_sections(
             "checklist": [
                 ("학생 자료", f"최근 시험지와 {primary.label} 표시 위치"),
                 ("시험 계획", f"학교 범위표와 {secondary.label} 마감일"),
-                ("재확인", f"{support.label} 확인 날짜와 학생 설명 기록"),
+                ("재확인", f"{support.label}을 살필 날짜와 학생 설명 기록"),
                 ("이용 조건", f"{grade_check}·시간표·교습비·통학 동선"),
             ],
         },
@@ -3905,32 +5374,32 @@ def high_english_faq(
             f"페이지에서 확인되는 학교는 {school_text} 등이며 모든 과정의 개설을 뜻하지 않습니다. 학생 학교의 시험 일정과 자료 반영 가능 여부를 직접 확인하세요.",
             f"참고용 학교 목록에는 {school_text} 등이 포함돼 있습니다. 등록 판단은 학교명이 아니라 실제 범위표와 센터의 현재 개설 답변을 기준으로 해야 합니다.",
             f"{school_text} 등은 주변 학교를 확인하기 위한 명칭입니다. 재학 학교와 시험 범위를 알린 뒤 현재 자료로 학습 계획을 세울 수 있는지 물어보세요.",
-            f"공개 자료에는 {school_text} 등이 참고 학교로 표시돼 있습니다. 수업 가능 여부는 학생의 학교·범위·현재 개설 상황을 함께 확인한 뒤 판단하세요.",
-            f"확인 가능한 참고 학교는 {school_text} 등입니다. 이 명칭과 실제 운영 범위는 다를 수 있으므로 시험 범위표를 가져가 반영 방식을 확인하세요.",
-            f"학교 정보에는 {school_text} 등이 보이지만 이는 가능 학교 확정 목록이 아닙니다. 학생이 다니는 학교의 범위와 현재 수업 자료를 함께 대조하세요.",
+            f"공개 자료에는 {school_text} 등이 참고 학교로 표시돼 있습니다. 수업 가능 여부는 학생이 다니는 학교명·현재 학습 범위·센터의 개설 상황을 함께 확인한 뒤 판단하세요.",
+            f"확인 가능한 참고 학교는 {school_text} 등입니다. 이 학교명이 모든 수업 범위의 개설을 뜻하지 않으므로 시험 범위표를 가져가 반영 방식을 확인하세요.",
+            f"학교 정보에는 {school_text} 등이 보이지만 이는 가능 학교 확정 목록이 아닙니다. 학생이 다니는 학교의 학습 범위와 현재 수업 자료를 함께 대조하세요.",
             f"{school_text} 등은 상담 질문을 준비하기 위한 학교명입니다. 실제 재학 학교의 시험 자료를 보여 주고 현재 개설 범위에 맞는지 직접 확인하세요.",
             f"참고 학교로 {school_text} 등이 기재돼 있습니다. 학교명 자체보다 학생의 범위표와 최근 시험지를 기준으로 자료 반영 가능 여부를 물어보세요.",
-            f"제공 목록에서 {school_text} 등을 확인할 수 있습니다. 다만 모든 학교 과정이 열려 있다는 뜻은 아니므로 재학 학교의 실제 범위를 따로 대조하세요.",
+            f"제공 목록에서 {school_text} 등을 확인할 수 있습니다. 다만 모든 학교 과정이 열려 있다는 뜻은 아니므로 학생이 다니는 학교의 진도 범위와 현재 수업 자료를 대조하세요.",
         ])
     else:
         school_answer = stable_pick(seed, "high-faq-school-answer-blank", [
             "참고할 고등학교 명칭이 별도로 기재돼 있지 않습니다. 재학 학교와 시험 범위를 직접 전달하고 현재 자료 반영 방식을 물어보세요.",
             "제공 자료에는 참고 학교명이 없습니다. 학생이 다니는 학교의 범위표를 가져가 현재 수업에 반영할 수 있는지 확인하세요.",
             "확인 가능한 고등학교 목록이 없으므로 학교명을 추정하지 말고 실제 재학 학교와 시험 일정을 상담에서 알려 주세요.",
-            "이 페이지에는 참고 학교 정보가 기재돼 있지 않습니다. 학생의 학교·시험 범위·현재 진도를 직접 제시해 자료 반영 여부를 확인하세요.",
+            "이 페이지에는 참고 학교 정보가 기재돼 있지 않습니다. 학생이 다니는 학교명과 현재 진도 자료를 직접 제시해 자료 반영 여부를 확인하세요.",
             "공개된 학교 명칭이 없기 때문에 실제 범위표와 최근 시험지를 기준으로 현재 개설 범위를 물어봐야 합니다.",
             "참고 학교 목록은 제공되지 않았습니다. 재학 학교의 시험 일정과 범위 자료를 가져가 반영 가능 여부를 따로 대조하세요.",
-            "학교 정보가 비어 있으므로 주변 학교를 임의로 판단하지 말고 학생 학교의 범위와 현재 수업 자료를 직접 확인하세요.",
+            "학교 정보가 비어 있으므로 주변 학교를 임의로 판단하지 말고 학생이 다니는 학교의 현재 학습 범위와 사용 중인 수업 자료를 직접 확인하세요.",
             "제공 자료만으로 참고 학교를 특정할 수 없습니다. 재학 학교와 시험 범위를 알린 뒤 현재 수업에서 다룰 수 있는지 물어보세요.",
         ])
     fact_answer = f"{grade_answer} {school_answer}"
     first_answer = stable_pick(seed, "high-faq-answer-first", [
-        f"최근 자료에서 ‘{primary.evidence}’를 표시하고 ‘{primary.checkpoint}’를 다음 점검 질문으로 씁니다. 그 답을 확인한 뒤 ‘{primary.action}’을 첫 실행 항목으로 정하세요.",
-        f"첫 확인 자료는 ‘{primary.evidence}’입니다. 학생이 ‘{primary.checkpoint}’에 직접 답하게 한 뒤 이번 주에는 ‘{primary.action}’만 실행해 보세요.",
-        f"점수표보다 ‘{primary.evidence}’가 남은 시험지를 먼저 봅니다. ‘{primary.action}’을 해 본 뒤 ‘{primary.checkpoint}’에 학생이 혼자 답할 수 있는지를 같은 자료로 다시 확인하세요.",
+        f"최근 자료에서 ‘{primary.evidence}’를 표시하고 ‘{primary.action}’을 첫 실행 항목으로 정하세요. 다음 점검에서는 ‘{primary.checkpoint}’를 확인합니다.",
+        f"첫 확인 자료는 ‘{primary.evidence}’입니다. 이번 주에는 ‘{primary.action}’을 실행하고, 다음 확인에서 ‘{primary.checkpoint}’를 살피세요.",
+        f"점수표보다 ‘{primary.evidence}’가 남은 시험지를 먼저 봅니다. ‘{primary.action}’을 해 본 뒤 다음 확인에서는 ‘{primary.checkpoint}’를 살피세요.",
         f"학생에게 ‘{primary.evidence}’를 직접 설명하게 하세요. 설명이 끊긴 지점을 표시한 뒤 ‘{primary.action}’을 실행하고 ‘{primary.checkpoint}’로 재확인합니다.",
         f"최근 시험지 한 장에서 ‘{primary.evidence}’를 기준선으로 남깁니다. 첫 행동은 ‘{primary.action}’, 일주일 뒤 확인 질문은 ‘{primary.checkpoint}’입니다.",
-        f"먼저 ‘{primary.evidence}’가 보이는 자료 위치와 날짜를 적습니다. 이후 ‘{primary.action}’을 수행하고 ‘{primary.checkpoint}’에 학생이 혼자 답하는지 확인하세요.",
+        f"먼저 ‘{primary.evidence}’가 보이는 자료 위치와 날짜를 적습니다. 이후 ‘{primary.action}’을 수행하고 다음 확인에서는 ‘{primary.checkpoint}’를 살피세요.",
     ])
     distinction_answer = stable_pick(seed, "high-faq-answer-distinction", [
         f"‘{primary.evidence}’와 ‘{secondary.evidence}’를 다른 칸에 적고 같은 날짜에 비교하세요. 각 기록에는 다시 설명한 날짜와 도움 없이 수행했는지를 남깁니다.",
@@ -3942,17 +5411,17 @@ def high_english_faq(
     ])
     exam_answer = stable_pick(seed, "high-faq-answer-exam", [
         f"내신과 모의고사 모두에서 {primary.label}·{secondary.label}을 확인하되 자료와 마감일은 나눕니다. 판단할 때는 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’를 각각 대조하세요.",
-        f"학교 범위 학습과 누적 학습의 달력을 분리한 뒤 두 일정에서 {primary.label}과 {secondary.label}의 최소 행동을 따로 정하세요. 기준은 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’입니다.",
+        f"학교 범위 학습과 누적 학습의 달력을 분리한 뒤 두 일정에서 {primary.label}·{secondary.label} 관련 최소 행동을 따로 정하세요. 기준은 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’입니다.",
         f"한 영역을 내신 전용, 다른 영역을 모의고사 전용으로 고정하지 않습니다. 시험 자료에 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’가 어떻게 적용되는지 보고 주간 비중을 정하세요.",
-        f"내신은 범위 자료와 마감일을, 모의고사는 새 지문과 재확인일을 중심으로 기록합니다. 두 기록 모두 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’를 확인 기준으로 사용하세요.",
+        f"내신은 범위 자료와 마감일을, 모의고사는 새 지문과 재확인일을 중심으로 기록합니다. 두 자료에는 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’를 각각 적용하세요.",
         f"시험별 계획표는 따로 두되 {primary.label}·{secondary.label}의 현재선을 같은 주에 비교하세요. ‘{primary.exam_use}’와 ‘{secondary.exam_use}’ 중 필요한 항목만 각 자료에 적용합니다.",
         f"내신 기간에는 학교 범위의 완료 흔적을, 평소에는 모의고사 누적 기록을 남깁니다. 어느 쪽이든 ‘{primary.exam_use}’와 ‘{secondary.exam_use}’를 자료에 맞게 선택하세요.",
     ])
     material_answer = stable_pick(seed, "high-faq-answer-material", [
         f"{support.label}·{extra.label}을 확인할 수 있는 최근 자료와 학교 범위표, 현재 교재를 준비합니다. ‘{extra.consult_question}’를 묻고 두 영역의 재확인 날짜를 적으세요.",
         f"{support.label}은 ‘{support.evidence}’, {extra.label}은 ‘{extra.evidence}’가 남은 최근 자료로 확인하세요. 이어 ‘{extra.consult_question}’를 묻고 확인일을 정합니다.",
-        f"상담 자료는 {support.label}·{extra.label}의 수행 흔적이 보이는 교재와 주간 계획표면 충분합니다. ‘{support.consult_question}’도 메모해 가세요.",
-        f"학교 범위표와 표시가 남은 학습 자료를 한 묶음으로 준비하세요. {support.label}에서 막힌 이유와 {extra.label}의 확인 방식을 묻고 다음 점검 날짜를 남깁니다.",
+        f"상담 자료로 {support.label}·{extra.label} 관련 활동의 수행 흔적이 보이는 교재와 주간 계획표를 먼저 준비하세요. ‘{support.consult_question}’도 메모해 가세요.",
+        f"학교 범위표와 표시가 남은 학습 자료를 한 묶음으로 준비하세요. {support.label}{particle_for(support.label, '을', '를')} 확인할 자료에서 막힌 이유와 {extra.label}의 확인 방식을 묻고 다음 점검 날짜를 남깁니다.",
         f"{support.label}의 ‘{support.evidence}’와 {extra.label}의 ‘{extra.evidence}’가 보이는 자료를 각각 한 곳씩 고르세요. 두 자료를 언제 다시 확인할지도 상담 메모에 적습니다.",
         f"{support.label}은 ‘{support.evidence}’로, {extra.label}은 ‘{extra.evidence}’로 확인합니다. 자료를 많이 가져가기보다 표시가 남은 부분과 질문을 함께 준비하세요.",
     ])
@@ -4022,26 +5491,1961 @@ def high_english_scenarios(
     grades = relevant_grades(config, center, "영어")
     grade_condition = f"영어 가능 학년({'·'.join(grades)})" if grades else "고등 영어의 현재 개설 학년"
     first = stable_pick(seed, "high-compact-scenario-learning", [
-        f"{locality} 학부모가 ‘{profile.focus}’을 상담 주제로 삼은 가상 상황입니다. 학생은 {primary.label}의 첫 행동을 해 보고, 학부모는 {secondary.label}의 재확인 날짜를 묻습니다.",
-        f"{locality} 학생의 내신과 모의고사 일정이 겹친 가상 상황입니다. 학부모는 ‘{profile.focus}’을 기준으로 {primary.label}을 먼저 배치하고 {secondary.label}의 최소 복습일을 따로 정합니다.",
-        f"같은 오답이 반복되는 {locality} 학생의 가상 상담입니다. ‘{profile.focus}’을 상담 주제로 정하고 영어가 어렵다는 말 대신 {primary.label} 질문과 {secondary.label} 기록을 남깁니다.",
-        f"교재 변경을 고민하는 {locality} 학부모의 가상 상황입니다. ‘{profile.focus}’에 맞춰 {primary.label}의 현재선을 확인하고 {secondary.label}의 연습량을 조정합니다.",
-        f"시험 뒤 공부 순서를 정하지 못한 {locality} 학생을 가정했습니다. 학부모는 ‘{profile.focus}’을 중심으로 {primary.label}에서 막힌 이유와 {secondary.label}의 다음 확인일을 나누어 적습니다.",
-        f"{locality} 학생이 새 교재를 시작하기 전 상담하는 가상 장면입니다. ‘{profile.focus}’에 필요한 {primary.label} 자료를 보여 주고 {secondary.label}을 언제 다시 볼지 질문합니다.",
-        f"내신 범위와 누적 학습이 겹친 {locality} 가상 사례입니다. ‘{profile.focus}’을 기준으로 {primary.label}의 마감일과 {secondary.label}의 최소 행동을 다른 줄에 둡니다.",
-        f"{locality} 학부모가 최근 시험지 한 장으로 상담을 준비하는 가상 상황입니다. ‘{profile.focus}’을 구체화하기 위해 {primary.label} 기록과 {secondary.label} 설명을 비교합니다.",
+        f"{locality} 학부모가 ‘{profile.focus}’을 상담 주제로 삼은 가상 상황입니다. 학생은 ‘{primary.action}’을 해 보고, 학부모는 ‘{secondary.checkpoint}’를 살필 날짜를 묻습니다.",
+        f"{locality} 학생의 내신과 모의고사 일정이 겹친 가상 상황입니다. 학부모는 ‘{primary.action}’을 먼저 배치하고 ‘{secondary.action}’을 해 볼 날짜를 따로 정합니다.",
+        f"같은 영어 활동에서 자주 멈추는 {locality} 학생의 가상 상담입니다. ‘{profile.focus}’을 상담 주제로 정하고 영어가 어렵다는 말 대신 {primary.label} 확인 항목과 {secondary.label} 기록을 남깁니다.",
+        f"교재 변경을 고민하는 {locality} 학부모의 가상 상황입니다. ‘{profile.focus}’에 맞춰 {primary.label}{particle_for(primary.label, '을', '를')} 확인할 자료에서 막힌 위치를 찾고 ‘{secondary.action}’을 이번 주 일정에 맞춰 조정합니다.",
+        f"시험 뒤 공부 순서를 정하지 못한 {locality} 학생을 가정했습니다. 학부모는 ‘{profile.focus}’을 중심으로 {primary.label}{particle_for(primary.label, '을', '를')} 확인할 자료에서 막힌 이유와 {secondary.label}{particle_for(secondary.label, '을', '를')} 살필 다음 날짜를 나누어 적습니다.",
+        f"{locality} 학생이 새 교재를 시작하기 전 상담하는 가상 장면입니다. ‘{profile.focus}’에 필요한 {primary.label} 자료를 보여 주고 {secondary.label} 관련 기록의 재확인 날짜를 묻습니다.",
+        f"학교 일정과 평소 학습 일정이 겹친 {locality} 가상 사례입니다. ‘{profile.focus}’을 기준으로 {primary.label}·{secondary.label} 관련 최소 행동과 완료일을 각각 다른 줄에 둡니다.",
+        f"{locality} 학부모가 최근 시험지 한 장으로 상담을 준비하는 가상 상황입니다. ‘{profile.focus}’을 구체화하기 위해 {primary.label} 자료와 {secondary.label} 자료에서 확인한 기록을 나누어 남깁니다.",
     ])
     second = stable_pick(seed, "high-compact-scenario-decision", [
         f"{locality}의 {center['center_name']} 상담을 준비하는 가상 장면입니다. 학부모는 {grade_condition}과 실제 시간표를 확인하고 ‘{extra.consult_question}’를 별도 질문으로 남깁니다.",
-        f"상담 뒤 {locality} 학생과 학부모가 계획을 다시 읽는 가상 상황입니다. {grade_condition}·제공 주소·통학 시간을 확인한 다음 {support.label}의 첫 행동을 실제 일정과 대조합니다.",
-        f"{locality}의 참고 학교와 실제 재학 학교가 다른 경우를 가정했습니다. 학부모는 시험 범위표와 {grade_condition}을 대조한 뒤 {secondary.label}의 확인 방식과 {support.label}의 점검 주기를 질문합니다.",
-        f"첫 주 계획을 지키지 못한 {locality} 학생의 가상 상담입니다. 학부모는 이용 조건과 미완료 원인을 나눠 적고, 학생은 {support.label} 기록을 본 뒤 {extra.label}의 분량을 바꿀지 결정합니다.",
-        f"{locality} 상담 뒤 등록 여부를 비교하는 가상 장면입니다. 학부모는 {grade_condition}·교습비·시간표를 사실 항목으로 적고 {support.label}의 재확인 날짜는 학습 계획에 따로 남깁니다.",
-        f"{locality} 학생의 학교 일정이 바뀐 경우를 가정했습니다. 학부모는 시험 범위와 {grade_condition}을 다시 확인하고 {extra.label}의 최소 과제를 현재 시간표와 대조합니다.",
-        f"제공 주소까지의 이동 시간을 확인하는 {locality} 가상 상담입니다. 통학·시간표와 {grade_condition}을 먼저 적은 뒤 {secondary.label}의 확인 질문은 별도 칸에 둡니다.",
-        f"{locality} 학부모가 센터 답변을 학생 계획으로 옮기는 가상 상황입니다. {grade_condition}과 실제 시간표를 확인하고 {support.label}의 첫 행동과 {extra.label}의 확인일을 정합니다.",
+        f"상담 뒤 {locality} 학생과 학부모가 계획을 다시 읽는 가상 상황입니다. {grade_condition}·제공 주소·통학 시간을 확인한 다음 {support.label} 관련 첫 행동을 실행할 날짜를 실제 일정에 맞춰 정합니다.",
+        f"{locality}의 참고 학교와 실제 재학 학교가 다른 경우를 가정했습니다. 학부모는 시험 범위표를 확인하고 {grade_condition}{particle_for(grade_condition, '은', '는')} 별도 이용 조건으로 적은 뒤 {secondary.label}의 확인 방식과 {support.label}의 점검 주기를 질문합니다.",
+        f"첫 주 계획을 지키지 못한 {locality} 학생의 가상 상담입니다. 학부모는 이용 조건과 미완료 원인을 나눠 적고, 학생은 {support.label} 기록을 본 뒤 ‘{extra.action}’을 이번 주에 어떻게 배치할지 결정합니다.",
+        f"{locality} 상담 뒤 등록 여부를 비교하는 가상 장면입니다. 학부모는 {grade_condition}·교습비·시간표를 사실 항목으로 적고 {support.label}을 살필 날짜는 학습 계획에 따로 남깁니다.",
+        f"{locality} 학생의 학교 일정이 바뀐 경우를 가정했습니다. 학부모는 시험 범위와 {grade_condition}을 다시 확인하고 ‘{extra.action}’을 실행할 날짜와 가능한 시간을 현재 시간표에 맞춰 정합니다.",
+        f"제공 주소까지의 이동 시간을 확인하는 {locality} 가상 상담입니다. 통학·시간표와 {grade_condition}을 먼저 적은 뒤 {secondary.label} 확인 항목은 별도 칸에 둡니다.",
+        f"{locality} 학부모가 센터 답변을 학생 계획으로 옮기는 가상 상황입니다. {grade_condition}과 실제 시간표를 확인하고 {support.label} 관련 첫 행동과 {extra.label}을 살필 날짜를 정합니다.",
     ])
     return [first, second]
+
+
+def elementary_english_particle_tokens(
+    profile: ElementaryEnglishProfile,
+) -> tuple[str, ...]:
+    values: list[str] = [profile.focus, *profile.source_markers]
+    for intent in profile.intents:
+        values.extend((
+            intent.label,
+            intent.concern,
+            intent.evidence,
+            intent.action,
+            intent.checkpoint,
+            intent.exam_use,
+            intent.consult_question,
+            elementary_english_intent_material(intent),
+            elementary_english_recheck_result(intent),
+        ))
+    return tuple(dict.fromkeys(value for value in values if value))
+
+
+def naturalize_elementary_english_text(
+    value: str,
+    profile: ElementaryEnglishProfile,
+) -> str:
+    """Keep elementary prose natural while preserving audited transition focuses."""
+
+    # ``별내신도시`` is a locality name, not the assessment term ``내신``.
+    # Protect it before the elementary-level vocabulary substitutions so the
+    # place identity remains intact in quick answers, prose and JSON-LD.
+    locality_marker = "__ELEMENTARY_ENGLISH_BYEOLNAE_NEW_TOWN__"
+    value = value.replace("별내신도시", locality_marker)
+    protected_values: list[str] = [profile.focus, *profile.source_markers]
+    for intent in profile.intents:
+        protected_values.extend((
+            intent.label,
+            intent.concern,
+            intent.evidence,
+            intent.action,
+            intent.checkpoint,
+            intent.exam_use,
+            intent.consult_question,
+            elementary_english_intent_material(intent),
+            elementary_english_recheck_result(intent),
+        ))
+    protected: list[tuple[str, str]] = []
+    for index, protected_value in enumerate(
+        sorted(set(protected_values), key=len, reverse=True)
+    ):
+        if protected_value and protected_value in value:
+            marker = f"__ELEMENTARY_ENGLISH_VALUE_{index}__"
+            value = value.replace(protected_value, marker)
+            protected.append((marker, protected_value))
+
+    replacements = (
+        ("내신과 모의고사 일정이 겹친", "학교 일정과 평소 학습 일정이 겹친"),
+        ("내신과 모의고사", "학교 영어와 처음 보는 글 읽기"),
+        ("내신·모의고사", "학교 영어·새 글 읽기"),
+        ("내신 기간", "학교 단원 학습 기간"),
+        ("내신 범위", "학교 단원"),
+        ("학교 시험 범위", "학교 단원"),
+        ("학교 시험", "학교 단원 학습"),
+        ("시험 일정표", "학교 학습 일정표"),
+        ("시험 일정", "학교 학습 일정"),
+        ("시험 달력", "학교 학습 달력"),
+        ("시험 주간", "학교 단원 확인 주간"),
+        ("시험 기간", "학교 단원 학습 기간"),
+        ("시험 공부", "학교 단원 복습"),
+        ("시험별", "확인 자료별"),
+        ("시험 전후", "학습 확인 전후"),
+        ("시험 전", "학습 확인 전"),
+        ("시험 뒤", "학습 확인 뒤"),
+        ("모의고사 시험지", "처음 보는 글 학습지"),
+        ("모의고사", "처음 보는 글"),
+        ("시험 범위표", "학교 진도표"),
+        ("범위표", "학교 진도표"),
+        ("최근 시험지", "최근 교재와 학습지"),
+        ("시험지", "학습지"),
+        ("점수표", "학습 기록표"),
+        ("성적표", "학습 기록표"),
+        ("내신", "학교 영어"),
+        ("서술형", "짧은 문장 쓰기"),
+        ("수행평가", "학교 영어 활동"),
+        ("어법", "문장 규칙"),
+        ("기출", "누적 학습 자료"),
+        ("장문", "짧은 글"),
+        ("긴 지문", "짧은 글"),
+        ("고등 영어", "초등 영어"),
+        ("고등학생", "초등학생"),
+        ("고등학교", "초등학교"),
+        ("수능", "다음 단계 영어"),
+        ("입시", "다음 학년 준비"),
+        ("등급", "학습 결과"),
+        ("수학", "영어"),
+        ("국어", "영어"),
+    )
+    for before, after in replacements:
+        value = value.replace(before, after)
+    value = value.replace("시험", "학습 확인")
+    value = value.replace("고등", "다음 단계")
+    value = re.sub(r"(?<![0-9A-Za-z가-힣])고[1-3](?![0-9A-Za-z가-힣])", "다음 학년", value)
+    value = value.replace("학교 영어 학교 영어", "학교 영어")
+    value = value.replace("초등 영어 초등 영어", "초등 영어")
+    value = value.replace("교재와 학습지와 교재", "교재와 학습지")
+    value = value.replace(locality_marker, "별내신도시")
+    for marker, protected_value in protected:
+        value = value.replace(marker, protected_value)
+    for left in profile.intents:
+        for right in profile.intents:
+            if left is right:
+                continue
+            joined = f"{left.label}·{right.label}"
+            natural_join = (
+                f"{left.label}{particle_for(left.label, '과', '와')} {right.label}"
+            )
+            value = value.replace(joined, natural_join)
+    # High-school copy is reused only as a variation bank.  Repair the small
+    # number of joins that become unnatural after the elementary vocabulary
+    # substitutions, and replace abstract course/number language with things
+    # a parent can actually observe in a workbook or weekly record.
+    elementary_repairs = (
+        ("처음 보는 글는", "처음 보는 글은"),
+        ("학교 단원와", "학교 단원과"),
+        ("짧은 문장 쓰기을", "짧은 문장 쓰기를"),
+        ("학교 단원과 누적 학습에", "학교 단원과 새 글 읽기에"),
+        ("누적 학습에 학습 ", "새 글 읽기에 학습 "),
+        ("학교 영어 종료 뒤", "학교 단원 학습이 끝난 뒤"),
+        ("실제 재학 학교와 학교 진도표", "실제 재학 학교와 진도표"),
+        ("실제 재학 학교와 학교 학습 일정", "실제 재학 학교와 학습 일정"),
+        ("실제 재학 학교의 학교 진도표", "실제 재학 학교의 진도표"),
+        ("실제 재학 학교의 학교 학습 일정", "실제 재학 학교의 학습 일정"),
+        ("재학 학교의 학교 학습 일정", "재학 학교의 학습 일정"),
+        ("학생이 다니는 학교의 학교 진도표", "학생이 다니는 학교의 진도표"),
+        ("학생 학교의 학교 학습 일정", "학생이 다니는 학교의 학습 일정"),
+        ("학교 진도표와 최근 교재와 학습지", "학교 진도표와 현재 교재·최근 학습지"),
+        ("최근 교재와 학습지 한 장과 현재 교재를 준비하세요", "최근에 푼 학습지 한 장과 현재 사용하는 교재를 준비하세요"),
+        ("최근 교재와 학습지 한 장으로", "최근에 푼 학습지 한 장으로"),
+        ("최근 교재와 학습지 한 장에서", "최근에 푼 학습지 한 장에서"),
+        ("자료에 맞게 선택하세요", "각 자료에 맞게 적용하세요"),
+        ("중1 학습 확인 범위나 유형", "중1 시험 범위나 유형"),
+        ("학습 확인 자료", "학습 자료"),
+        ("학습 확인 범위", "학습 범위"),
+        ("재확인 기준의 재확인일", "재확인 날짜"),
+        ("재확인 기준의 확인일", "확인 날짜"),
+        ("다음 점검에서도 같은 학습지를 사용하되", "다음 점검에서는 같은 기능의 새 학습지를 사용하고"),
+        ("오답 원인·다시 확인의 확인일이", "오답 원인을 다시 볼 날짜가"),
+        ("오답 원인·다시 확인의 확인일을", "오답 원인을 다시 볼 날짜를"),
+        ("오답 원인·다시 확인의 확인일과", "오답 원인을 다시 볼 날짜와"),
+        ("오답 원인·다시 확인의 확인일", "오답 원인을 다시 볼 날짜"),
+        ("오답 원인·다시 확인의 확인 기록", "오답 원인을 다시 살핀 기록"),
+        ("오답 원인·다시 확인의 확인 방식", "오답 원인을 다시 살피는 방식"),
+        ("오답 원인·다시 확인의 확인 질문", "오답 원인을 다시 볼 질문"),
+        ("오답 원인·다시 확인 재확인일", "오답 원인을 다시 볼 날짜"),
+        ("오답 원인·다시 확인 재확인 날짜", "오답 원인을 다시 볼 날짜"),
+        ("오답 원인·다시 확인 재확인 기록", "오답 원인을 다시 살핀 기록"),
+        ("오답 원인·다시 확인 재확인 방식", "오답 원인을 다시 살피는 방식"),
+        ("오답 원인·다시 확인 재확인 질문", "오답 원인을 다시 볼 질문"),
+        ("오답 원인·다시 확인 재확인 자료", "오답 원인을 다시 살필 자료"),
+        ("오답 원인을 다시 볼 날짜이", "오답 원인을 다시 볼 날짜가"),
+        ("오답 원인을 다시 볼 날짜을", "오답 원인을 다시 볼 날짜를"),
+        ("오답 원인을 다시 볼 날짜은", "오답 원인을 다시 볼 날짜는"),
+        ("오답 원인을 다시 볼 날짜과", "오답 원인을 다시 볼 날짜와"),
+        ("처음 쓴 문장의 빠진 낱말·순서와", "처음 쓴 문장의 빠진 낱말과 잘못된 순서, 그리고"),
+        ("규칙 한 줄과 맞는", "규칙 한 줄에 맞는"),
+        ("같은 기능의 새 자료에서 ‘같은 기능의 새 활동에서", "새 자료에서 ‘같은 기능의 새 활동으로"),
+        ("보존하세요", "남겨 두세요"),
+        ("보존합니다", "남겨 둡니다"),
+        ("한 학습 확인에", "한 번의 확인에"),
+        (
+            "학교 범위 학습과 누적 학습의 달력을 분리한 뒤",
+            "학교 단원 일정과 평소 읽기·복습 일정을 나눈 뒤",
+        ),
+        (
+            "학교 영어는 범위 자료와 마감일을, 처음 보는 글은 새 지문과 재확인일을 중심으로 기록합니다.",
+            "학교 영어는 단원 자료와 마감일을, 평소 읽기는 처음 보는 글과 재확인일을 중심으로 기록합니다.",
+        ),
+        (
+            "학교 단원 학습 기간에는 학교 범위의 완료 흔적을, 평소에는 처음 보는 글 누적 기록을 남깁니다.",
+            "학교 단원 학습 기간에는 단원 활동을 마친 흔적을, 평소에는 처음 보는 글을 읽고 설명한 기록을 남깁니다.",
+        ),
+        (
+            "학습 기록표보다 ‘시작·완료 시각, 읽은 문장과 다음에 물어볼 내용을 적은 주간 기록’이 남은 학습지를 먼저 봅니다.",
+            "최근 주간표에서 시작·완료 시각, 읽은 문장과 다음에 물어볼 내용을 확인하고 현재 기준선으로 남깁니다.",
+        ),
+        ("위치가 보이는 위치", "지점이 보이는 쪽"),
+        ("의 기초와 기초 ", "의 현재선과 기초 "),
+        ("학습 우선순위에 설명이 필요한지", "학습 우선순위를 먼저 설명할지"),
+        ("학습 우선순위 학습 기록", "영어 우선순위 기록"),
+        ("학습 우선순위 학습 상담", "영어 우선순위 상담"),
+        ("의 최소 과제를 현재 시간표와 대조합니다", "에서 이번 주에 할 활동을 현재 시간표에 맞춰 조정합니다"),
+        ("다시 확인 확인", "다시 확인"),
+    )
+    for before, after in elementary_repairs:
+        value = value.replace(before, after)
+    value = re.sub(
+        r"기준은 ‘([^’\r\n]+)’과 ‘([^’\r\n]+)’입니다\.",
+        r"두 확인 방법은 ‘\1’과 ‘\2’입니다.",
+        value,
+    )
+    value = re.sub(
+        r"판단할 때는 ‘([^’\r\n]+)’과 ‘([^’\r\n]+)’[을를] 각각 대조하세요\.",
+        r"‘\1’과 ‘\2’을 각 자료에 맞게 적용하세요.",
+        value,
+    )
+    value = value.replace("표시한 기록’을 표시하고", "표시한 기록’을 확인하고")
+    value = value.replace("표시한 기록’을 표시한 뒤", "표시한 기록’을 확인한 뒤")
+    value = re.sub(
+        r"‘([^’\r\n]{1,180}표시한 기록)’을 표시하세요",
+        r"‘\1’을 확인할 수 있는 쪽수와 날짜를 적으세요",
+        value,
+    )
+    value = re.sub(
+        r"일주일 뒤 ‘([^’\r\n]{1,220})’[을를] 같은 자료로 확인합니다\.",
+        r"일주일 뒤 같은 기능의 새 자료에서 ‘\1’를 살핍니다.",
+        value,
+    )
+    value = re.sub(
+        r"((?:일주일 뒤|일주일 후|7일 뒤에는|7일째에는|며칠 뒤|재확인 날|다음 점검에서|다시 볼 날짜에는|마지막 날에는|재확인 때)[^.!?\r\n]{0,100}‘)일주일 뒤\s+",
+        r"\1",
+        value,
+    )
+    # Shared source sentences often use a long quoted predicate followed by
+    # ``이며``. Recast it as a decision phrase so the quote is not mistaken
+    # for an incorrectly joined subject particle in reader-facing Korean.
+    value = value.replace("’이며", "’로 정하고")
+    value = value.replace("과정를", "과정을").replace("점검를", "점검을")
+    value = re.sub(r"(?<![가-힣])([가-힣]{2,12})\s+\1(?![가-힣])", r"\1", value)
+
+    # Quoted guidance often contains a full phrase rather than one of the
+    # profile tokens above.  Normalize the following particle from the final
+    # Korean syllable inside the quote, while leaving the protected phrase
+    # itself untouched.
+    particle_pairs = {
+        particle: pair
+        for pair in (("으로", "로"), ("은", "는"), ("이", "가"), ("을", "를"), ("과", "와"))
+        for particle in pair
+    }
+
+    def normalize_quoted_particle(match: re.Match[str]) -> str:
+        phrase = match.group("phrase")
+        final_hangul = re.findall(r"[가-힣]", phrase)
+        if not final_hangul:
+            return match.group(0)
+        consonant_form, vowel_form = particle_pairs[match.group("particle")]
+        particle = particle_for(final_hangul[-1], consonant_form, vowel_form)
+        return f"{match.group('open')}{phrase}{match.group('close')}{particle}"
+
+    quoted_particle_patterns = (
+        r"(?P<open>‘)(?P<phrase>[^’\r\n]{1,240})(?P<close>’)(?P<particle>으로|로|은|는|이|가|을|를|과|와)(?![가-힣])",
+        r"(?P<open>“)(?P<phrase>[^”\r\n]{1,240})(?P<close>”)(?P<particle>으로|로|은|는|이|가|을|를|과|와)(?![가-힣])",
+        r"(?P<open>')(?P<phrase>[^'\r\n]{1,240})(?P<close>')(?P<particle>으로|로|은|는|이|가|을|를|과|와)(?![가-힣])",
+        r'(?P<open>")(?P<phrase>[^"\r\n]{1,240})(?P<close>")(?P<particle>으로|로|은|는|이|가|을|를|과|와)(?![가-힣])',
+    )
+    for pattern in quoted_particle_patterns:
+        value = re.sub(pattern, normalize_quoted_particle, value)
+    value = re.sub(r"\s+", " ", value).strip()
+    value = normalize_particle_joins(
+        value, elementary_english_particle_tokens(profile)
+    )
+    # Particle normalization can join two already-normalized fragments.  Keep
+    # these repairs at the very end so no later pass can recreate them.
+    final_repairs = (
+        (
+            "오답 원인·다시 확인의 현재선을 확인",
+            "오답 원인을 다시 살핀 기록에서 현재선을 확인",
+        ),
+        ("오답 원인·다시 확인의 현재선 확인", "오답 원인을 다시 살피는 현재선 점검"),
+        ("오답 원인·다시 확인을 확인하려면", "오답 원인을 다시 살피려면"),
+        ("오답 원인·다시 확인을 확인하는", "오답 원인을 다시 살피는"),
+        ("오답 원인·다시 확인을 확인할", "오답 원인을 다시 살필"),
+        ("오답 원인·다시 확인을 확인하되", "오답 원인을 다시 살피되"),
+        ("오답 원인·다시 확인을 확인하고", "오답 원인을 다시 살피고"),
+        ("오답 원인·다시 확인을 확인하세요", "오답 원인을 다시 살피세요"),
+        ("오답 원인·다시 확인을 확인합니다", "오답 원인을 다시 살핍니다"),
+        ("오답 원인·다시 확인을 확인한", "오답 원인을 다시 살핀"),
+        ("오답 원인·다시 확인을 확인해", "오답 원인을 다시 살펴"),
+        ("오답 원인·다시 확인을 다시 확인하는", "오답 원인을 다시 살피는"),
+        ("오답 원인·다시 확인을 다시 확인할", "오답 원인을 다시 살필"),
+        ("오답 원인·다시 확인 다시 확인 날짜", "오답 원인을 다시 볼 날짜"),
+        ("질문·혼자 설명 재확인 질문", "질문·혼자 설명 점검 항목"),
+        ("질문·혼자 설명 상담 질문", "질문·혼자 설명 상담 항목"),
+        ("질문·혼자 설명 확인 질문", "질문·혼자 설명 확인 항목"),
+        ("질문·혼자 설명 질문", "질문·혼자 설명 항목"),
+        ("질문·혼자 설명 설명", "질문·혼자 설명 관련 활동 흔적"),
+        ("학습 우선순위 학습 질문", "학습 우선순위 확인 항목"),
+        ("다시 확인 확인", "다시 확인"),
+        ("오답 원인을 다시 볼 날짜이", "오답 원인을 다시 볼 날짜가"),
+        ("오답 원인을 다시 볼 날짜을", "오답 원인을 다시 볼 날짜를"),
+        ("오답 원인을 다시 볼 날짜은", "오답 원인을 다시 볼 날짜는"),
+        ("오답 원인을 다시 볼 날짜과", "오답 원인을 다시 볼 날짜와"),
+    )
+    for before, after in final_repairs:
+        value = value.replace(before, after)
+    # A quoted ``-는지`` clause is already a complete indirect question.
+    # Ask it directly instead of attaching the translated construction
+    # ``...에 답하게`` to the whole clause.
+    value = re.sub(
+        r"‘(?P<question>[^’\r\n]{1,240}(?:는지|인지))’에 학생이 직접 답하게 하고",
+        lambda match: f"학생에게 ‘{match.group('question')}’라고 직접 묻고",
+        value,
+    )
+    value = re.sub(
+        r"‘(?P<question>[^’\r\n]{1,240}(?:는지|인지))’에 답하게 하고",
+        lambda match: f"아이에게 ‘{match.group('question')}’라고 묻고",
+        value,
+    )
+    value = re.sub(
+        r"‘(?P<question>[^’\r\n]{1,240}(?:는지|인지))’에 학생이 직접 답하게 하세요",
+        lambda match: f"학생에게 ‘{match.group('question')}’라고 직접 물어보세요",
+        value,
+    )
+    value = re.sub(
+        r"‘(?P<question>[^’\r\n]{1,240}(?:는지|인지))’에 답하게 하세요",
+        lambda match: f"아이에게 ‘{match.group('question')}’라고 물어보세요",
+        value,
+    )
+    return value
+
+
+def naturalize_elementary_english_tree(
+    value: object,
+    profile: ElementaryEnglishProfile,
+) -> object:
+    if isinstance(value, str):
+        return naturalize_elementary_english_text(value, profile)
+    if isinstance(value, list):
+        return [naturalize_elementary_english_tree(item, profile) for item in value]
+    if isinstance(value, tuple):
+        return tuple(naturalize_elementary_english_tree(item, profile) for item in value)
+    if isinstance(value, dict):
+        return {
+            key: naturalize_elementary_english_tree(item, profile)
+            for key, item in value.items()
+        }
+    return value
+
+
+def replace_elementary_english_focus(
+    value: object,
+    focus: str,
+    replacement: str,
+) -> object:
+    """Replace repeated exact focus mentions without changing other prose."""
+
+    if isinstance(value, str):
+        return value.replace(focus, replacement)
+    if isinstance(value, list):
+        return [
+            replace_elementary_english_focus(item, focus, replacement)
+            for item in value
+        ]
+    if isinstance(value, tuple):
+        return tuple(
+            replace_elementary_english_focus(item, focus, replacement)
+            for item in value
+        )
+    if isinstance(value, dict):
+        return {
+            key: replace_elementary_english_focus(item, focus, replacement)
+            for key, item in value.items()
+        }
+    return value
+
+
+def elementary_english_skill_phrase(profile: ElementaryEnglishProfile) -> str:
+    """Return a concrete, age-appropriate skill cluster for reader guidance."""
+
+    phrases = {
+        "phonics": "알파벳 소리와 단어 읽기",
+        "vocabulary": "단어·문장 읽기와 짧은 쓰기",
+        "sentence": "어휘·문장 읽기와 짧은 쓰기",
+        "reading": "짧은 글 독해·어휘·문장 읽기",
+        "grammar": "기초 문법 규칙을 적용하고 고친 문장",
+        "listening": "발음·듣기·말하기",
+        "speaking": "듣기와 말하기, 짧은 문장 쓰기",
+        "writing": "어휘·문장 쓰기·읽기",
+        "school": "단어·문장 읽기·쓰기",
+        "error": "어휘·문장 읽기·쓰기",
+        "routine": "단어·문장 읽기·쓰기",
+        "independence": "어휘·문장 읽기·말하기",
+        "next_stage": "어휘·문법·문장 읽기",
+        "diagnosis": "듣기·읽기·문장 쓰기",
+    }
+    return phrases.get(profile.intents[0].code, "어휘·문장 읽기·쓰기")
+
+
+def elementary_english_short_action(intent: HighEnglishIntent) -> str:
+    """Give a compact but observable child-level action for summaries."""
+
+    return {
+        "phonics": "새 낱말을 소리 내어 읽기",
+        "vocabulary": "새 문장에서 낱말 뜻을 말하기",
+        "sentence": "짧은 문장을 끊어 읽고 뜻을 설명하기",
+        "reading": "짧은 글에서 근거 문장을 찾기",
+        "grammar": "새 문장에 배운 규칙을 적용하기",
+        "listening": "짧은 음원에서 들은 표현을 표시하기",
+        "speaking": "짧은 질문에 한 문장으로 답하기",
+        "writing": "짧은 문장을 쓰고 빠진 낱말을 고치기",
+        "school": "학교 단원과 현재 교재의 같은 기능을 찾기",
+        "error": "틀린 이유를 적고 비슷한 활동을 다시 해 보기",
+        "routine": "할 분량과 도움받을 항목을 나누어 기록하기",
+        "independence": "모르는 곳을 표시하고 짧게 다시 설명하기",
+        "next_stage": "현재 활동 뒤 한 단계 더 긴 예시를 해 보기",
+        "diagnosis": "먼저 막힌 기능 하나를 골라 다시 해 보기",
+    }.get(intent.code, "같은 기능의 짧은 활동을 다시 해 보기")
+
+
+def elementary_english_action_label(intent: HighEnglishIntent) -> str:
+    """Name a concrete action as a noun phrase for later standalone sections."""
+
+    return {
+        "phonics": "새 낱말 소리 읽기 활동",
+        "vocabulary": "문장 속 낱말 뜻 설명 활동",
+        "sentence": "짧은 문장 끊어 읽기 활동",
+        "reading": "짧은 글의 근거 찾기 활동",
+        "grammar": "새 문장 규칙 적용 활동",
+        "listening": "짧은 음원 표현 찾기 활동",
+        "speaking": "한 문장 답하기 활동",
+        "writing": "짧은 문장 쓰고 고치기 활동",
+        "school": "학교 단원·교재 기능 찾기 활동",
+        "error": "틀린 이유 기록·다시 보기 활동",
+        "routine": "분량·도움 항목 기록 활동",
+        "independence": "모르는 지점 표시·다시 설명 활동",
+        "next_stage": "한 단계 더 긴 활동",
+        "diagnosis": "막힌 기능 선택·다시 보기 활동",
+    }.get(intent.code, "같은 기능을 다시 확인하는 활동")
+
+
+def elementary_english_intent_material(intent: HighEnglishIntent) -> str:
+    """Name the concrete material that supports one elementary English intent."""
+
+    return {
+        "phonics": "낱말의 글자·소리 대응 표시",
+        "vocabulary": "낱말 뜻·예문 기록",
+        "sentence": "문장을 읽고 멈춘 곳·설명한 내용의 기록",
+        "reading": "짧은 낯선 글·답을 뒷받침한 문장 표시",
+        "grammar": "규칙을 적용한 문장·고친 흔적",
+        "listening": "짧은 음원·알아들은 표현 표시",
+        "speaking": "질문에 답한 내용·도움 여부 기록",
+        "writing": "문장 초안·수정안",
+        "school": "학교 단원·현재 교재",
+        "error": "처음 틀린 지점·다시 한 결과",
+        "routine": "주간 계획·완료 여부",
+        "independence": "도움을 요청한 위치·스스로 다시 설명한 기록",
+        "next_stage": "현재 기초 기록·한 단계 더 긴 활동 기록",
+        "diagnosis": "현재 교재·기능별 수행 흔적",
+    }.get(intent.code, "현재 교재·학습 기록")
+
+
+def elementary_english_focus_guidance(
+    profile: ElementaryEnglishProfile,
+    locality: str,
+    seed: str,
+) -> tuple[str, str, str]:
+    """Connect the unique focus to evidence, action and a dated recheck."""
+
+    primary, secondary = profile.intents[:2]
+    evidence_location = f"‘{primary.evidence}’를 확인하고 해당 쪽수와 날짜를 적으세요"
+    evidence = stable_pick(seed, "elementary-guidance-evidence-v4", (
+        evidence_location,
+        f"‘{primary.evidence}’와 {secondary.label} 기록의 날짜를 함께 남기세요",
+        f"{primary.label}은 ‘{primary.evidence}’, {secondary.label}은 ‘{secondary.evidence}’로 구분하세요",
+        f"{locality} 기록에서 ‘{primary.evidence}’를 찾고 도움 전후로 달라진 부분과 날짜를 남기세요",
+        f"‘{primary.evidence}’가 나온 쪽수와 {secondary.label}을 살필 날짜를 적으세요",
+        f"{primary.label} 자료의 ‘{primary.evidence}’를 한 곳 고르세요",
+    ))
+    action = stable_pick(seed, "elementary-guidance-action-v4", (
+        f"‘{primary.action}’을 먼저 실행하세요",
+        f"‘{primary.action}’을 실행한 다음 도움 없이 마친 부분을 표시하세요",
+        f"‘{primary.action}’을 해 보고 도움 없이 마친 부분을 표시하세요",
+        f"주간표에 ‘{primary.action}’{particle_for(primary.action, '을', '를')} 실행할 날짜와 재확인일을 나누어 적으세요",
+        f"‘{primary.action}’만 실행하세요",
+        f"‘{primary.action}’을 직접 해 보고 도움받은 부분과 혼자 마친 부분을 나누어 표시하세요",
+    ))
+    checkpoint = stable_pick(seed, "elementary-guidance-checkpoint-v4", (
+        f"‘{primary.checkpoint}’를 살피세요",
+        f"‘{primary.checkpoint}’를 아이의 실제 자료로 대조하세요",
+        f"‘{primary.checkpoint}’를 첫 기록과 비교하세요",
+        f"‘{primary.checkpoint}’를 다음 점검 항목으로 사용하세요",
+        f"‘{primary.checkpoint}’를 살핀 날짜를 함께 남기세요",
+        f"‘{primary.checkpoint}’를 살핀 뒤 첫날과 달라진 점을 적으세요",
+    ))
+    return (
+        evidence,
+        action,
+        checkpoint,
+    )
+
+
+def elementary_english_distinction_answer(
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> str:
+    """Explain how to separate two intents without a corpus-wide stock line."""
+
+    primary, secondary = profile.intents[:2]
+    primary_result = elementary_english_recheck_result(primary)
+    secondary_result = elementary_english_recheck_result(secondary)
+    return stable_pick(seed, "elementary-distinction-answer-v4", (
+        f"{primary.label}과 {secondary.label}을 다른 칸에 적으세요. 각 칸에 자료 위치·이번 주 행동·다시 볼 날짜를 하나씩 남기면 두 영역의 결과를 섞지 않고 비교할 수 있습니다.",
+        f"{primary.label}의 현재선과 {secondary.label}의 현재선은 별도 자료에서 확인합니다. 며칠 뒤 {primary_result}와 {secondary_result}를 각각 해당 영역의 첫 기록과 대조해 다음 분량을 정하세요.",
+        f"두 영역을 한 완료표에 합치지 마세요. 재확인일을 각각 정하고, 그날 {primary.label}에는 {primary_result}를, {secondary.label}에는 {secondary_result}를 기록합니다.",
+        f"첫 자료에서 {primary.label}{particle_for(primary.label, '을', '를')} 확인할 때와 {secondary.label}{particle_for(secondary.label, '을', '를')} 확인할 때 막힌 위치를 각각 표시합니다. 같은 날 다시 보더라도 {primary_result}와 {secondary_result}는 다른 칸에 남기세요.",
+        f"{primary.label} 기록에는 시작 자료와 첫 행동을, {secondary.label} 기록에는 별도 자료와 다음 행동을 적으세요. 두 결과는 각각 해당 영역의 첫 기록과 대조합니다.",
+        f"자료 위치만 적지 말고 {primary.label}에는 {primary_result}를, {secondary.label}에는 {secondary_result}를 남기세요. 각 결과를 해당 영역의 첫 기록과 비교해 달라진 지점을 다음 복습 순서의 근거로 삼으세요.",
+    ))
+
+
+def elementary_english_recheck_result(intent: HighEnglishIntent) -> str:
+    """Name an observable recheck result that matches the intent's material."""
+
+    return {
+        "phonics": "새 낱말을 혼자 읽은 범위",
+        "vocabulary": "새 문맥에서 뜻을 설명한 낱말",
+        "sentence": "새 문장의 의미 덩어리를 설명한 결과",
+        "reading": "처음 보는 글에서 근거를 찾은 문장",
+        "grammar": "새 문장에서 규칙을 적용한 결과",
+        "listening": "새 음원에서 알아들은 표현",
+        "speaking": "표현이 달라진 질문에 답한 내용",
+        "writing": "도움 없이 완성하고 고친 문장",
+        "school": "학교 단원 내용을 설명하고 적용한 결과",
+        "error": "같은 실수가 줄어든 지점",
+        "routine": "완료 여부·미완료 이유·조정한 분량",
+        "independence": "도움을 요청한 지점과 혼자 다시 한 범위",
+        "next_stage": "한 단계 더 긴 활동을 끝낸 범위",
+        "diagnosis": "같은 기능을 혼자 설명하거나 수행한 범위",
+    }.get(intent.code, "같은 기능을 혼자 설명하거나 수행한 범위")
+
+
+def elementary_english_workflow(
+    profile: ElementaryEnglishProfile,
+    locality: str,
+    seed: str,
+    purpose: str,
+) -> str:
+    """Return a purpose-specific two-step workflow from a six-way bank."""
+
+    primary, secondary = profile.intents[:2]
+    primary_result = elementary_english_recheck_result(primary)
+    secondary_result = elementary_english_recheck_result(secondary)
+    if purpose == "direct" and primary.code == "next_stage":
+        return (
+            f"‘{profile.focus}’의 첫 기록에는 초등 자료 위치·날짜를 적고, "
+            f"재확인일에는 {primary_result}{particle_for(primary_result, '을', '를')} 대조하세요."
+        )
+    if purpose == "direct":
+        options = (
+            f"‘{profile.focus}’에 맞춘 기록은 {primary.label} 자료에서 시작합니다. 멈춘 쪽과 날짜를 표시하고 행동 하나를 실행한 뒤 재확인 날 {primary_result}를 첫 기록과 비교하세요.",
+            f"‘{profile.focus}’에 맞춰 확인할 기준선은 {primary.label} 자료에 남깁니다. 도움 전후의 표시와 실행일을 적고 재확인일에는 {primary_result}를 첫 기록과 대조하세요.",
+            f"‘{profile.focus}’을 구체화하려면 {primary.label} 자료 한 곳을 고릅니다. 막힌 위치·이번 행동·재확인 항목을 세 칸에 나누고, 마지막 칸에는 {primary_result}{particle_for(primary_result, '을', '를')} 적어 다음 분량을 정하세요.",
+            f"‘{profile.focus}’에 맞춘 기록에는 {primary.label}의 자료 위치와 날짜를 남기세요. 한 가지 행동을 실행하고 재확인 날 {primary_result}를 첫 기록과 비교합니다.",
+            f"‘{profile.focus}’에 필요한 현재선은 {primary.label}의 실제 자료로 확인합니다. 처음 멈춘 지점과 다시 해 본 지점을 표시하고 재확인 때 {primary_result}를 적으세요.",
+            f"‘{profile.focus}’에 맞춰 {primary.label} 기록을 기준으로 삼습니다. 이번 주 행동의 완료 흔적을 남기고 재확인 날 {primary_result}를 확인하세요.",
+        )
+    elif purpose == "plan":
+        options = (
+            f"재확인 결과를 보고 {secondary.label} 관련 행동을 다음 단계로 선택했다면 이 주제를 실천하는 계획은 해당 영역의 첫 기록을 기준선으로 삼습니다. 한 가지 행동을 실행하고 재확인 날 {secondary_result}를 확인하세요.",
+            f"{secondary.label} 관련 행동을 다음 활동으로 선택한 경우에만 이 주제를 위한 주간표에 해당 자료와 실행일을 적으세요. 일주일 뒤 {secondary_result}를 첫 기록과 비교합니다.",
+            f"{secondary.label} 관련 행동을 다음으로 정했다면 이 주제를 위한 계획 첫날에 해당 자료에서 막힌 위치를 표시하세요. 한 가지 행동을 실행하고 마지막 날 {secondary_result}를 다시 확인합니다.",
+            f"재확인 뒤 {secondary.label} 관련 행동으로 옮기기로 했다면 이 주제를 위한 계획에 해당 영역의 기록일과 재확인일을 나눠 적으세요. 실행 전후 기록을 비교해 {secondary_result}를 확인합니다.",
+            f"다음 주에 {secondary.label} 관련 행동을 하기로 했다면 이 주제를 위한 계획표에 해당 자료의 위치와 완료 기록을 남기세요. 재확인 날 첫 기록과 대조해 {secondary_result}를 살핍니다.",
+            f"재확인 결과 {secondary.label} 관련 행동을 시작하기로 했다면 이 주제를 위한 계획의 시작 분량을 아이가 혼자 끝낸 범위보다 조금 작게 정하고 첫 기록을 남기세요. 한 주 실행 뒤 {secondary_result}를 확인합니다.",
+        )
+    else:
+        raise ValueError(f"unknown elementary English workflow purpose: {purpose}")
+    return stable_pick(
+        f"{seed}|{purpose}",
+        f"elementary-workflow-{purpose}-v5",
+        options,
+    )
+
+
+def elementary_english_grade_center_paragraph(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> str:
+    """State source-backed grade facts without a repeated universal close."""
+
+    locality = str(center["locality"])
+    grades = relevant_grades(config, center, "영어")
+    primary, secondary = profile.intents[:2]
+    if grades:
+        grade_text = "·".join(grades)
+        grade_note = stable_pick(seed, "elementary-grade-note-v4", (
+            f"현재 페이지의 영어 가능 학년은 {grade_text}로 기재돼 있습니다. 아이의 {primary.label}과 {secondary.label} 상태는 최근 자료로 살피고, 실제 시간표는 상담 시점에 따로 확인하세요.",
+            f"제공 자료에서 확인되는 초등 영어 가능 학년은 {grade_text}입니다. 아이의 {primary.label} 현재 상태는 최근 교재로, 센터 시간표는 최신 안내로 각각 확인하세요.",
+            f"영어 학년 자료의 {grade_text} 표기를 {locality} 페이지에서 확인할 수 있습니다. {secondary.label} 상태는 아이의 기록으로 살피고, 반 구성과 최신 시간표는 등록 전에 별도로 물어보세요.",
+            f"영어 학년 정보에는 {grade_text} 표기가 있습니다. 이 학년 표기만으로 현재 반의 개설 여부나 요일을 알 수 없으므로 실제 시간표와 함께 확인하세요.",
+            f"공개된 {locality} 영어 가능 학년은 {grade_text}입니다. 아이의 {primary.label}과 {secondary.label} 상태는 학습 자료로, 등록 조건은 센터의 현재 답변으로 나누어 판단하세요.",
+            f"페이지 자료 기준 초등 영어 학년 범위는 {grade_text}입니다. 아이의 {secondary.label} 확인 자료와 센터의 실제 개설 반·시간표를 서로 다른 항목으로 구분해 확인하세요.",
+        ))
+    else:
+        grade_note = (
+            "현재 페이지에서 초등 영어 가능 학년 표기를 확인할 수 없습니다. "
+            "적용 학년과 현재 시간표는 상담에서 따로 확인하세요."
+        )
+    center_note = stable_pick(seed, "elementary-center-note-v4", (
+        f"확인할 센터명은 {center['center_name']}이고 제공 주소는 {center['address']}입니다.",
+        f"이 페이지의 센터 기준은 {center['center_name']}, 제공 위치는 {center['address']}입니다.",
+        f"센터 정보에는 {center['center_name']}과 제공 주소 {center['address']}가 기재돼 있습니다.",
+        f"안내된 센터는 {center['center_name']}이며 주소 자료에는 {center['address']}가 기재돼 있습니다.",
+        f"방문 전 {center['center_name']}과 제공 주소인 {center['address']}가 맞는지 함께 확인하세요.",
+        f"제공된 센터명은 {center['center_name']}, 주소는 {center['address']}입니다.",
+    ))
+    tuition_note = (
+        stable_pick(seed, "elementary-tuition-note-v4", (
+            "교습비는 연결된 조회 자료의 기준 시점과 현재 안내가 같은지 확인하세요.",
+            "연결된 교습비 자료와 실제 시간표는 등록 전에 각각 대조하세요.",
+            "교습비 조회 자료, 통학 동선과 현재 시간표는 학습 질문과 분리해 확인합니다.",
+            "등록 조건은 연결된 교습비 자료와 상담 시점의 시간표로 다시 확인하세요.",
+            "교습비 자료와 제공 주소까지의 이동 시간은 서로 다른 사실 항목으로 적으세요.",
+            "연결된 교습비 정보와 현재 운영 시간의 기준일을 따로 확인하세요.",
+        ))
+        if center["tuition_url"]
+        else "공개된 교습비 조회 경로가 없으므로 현재 교습비와 시간표를 직접 확인하세요."
+    )
+    return clean(f"{grade_note} {center_note} {tuition_note}")
+
+
+ELEMENTARY_ENGLISH_SIMILARITY_PARAGRAPH_OVERRIDES = {
+    "하계동": (
+        "영어 출발점은 한 번의 점수로 정하지 않습니다. 듣기에서 놓친 소리, 읽다가 멈춘 문장, "
+        "짧게 써 본 문장을 각각 표시한 뒤 아이가 혼자 다시 설명한 영역부터 다음 활동을 고르세요."
+    ),
+    "관평동": (
+        "집중이 끊긴 장면을 곧바로 영어 기초 부족으로 단정하지 마세요. 읽기 시작 시각, 멈춘 문장, "
+        "도움 뒤 다시 읽은 위치를 나누어 적고 같은 길이의 새 글에서 혼자 이어 읽는지 확인하세요."
+    ),
+    "금촌동": (
+        "과제 기록은 완료 표시보다 아이가 실제로 읽고 설명한 흔적이 중요합니다. 시작한 문장, 도움을 받은 "
+        "낱말, 다시 읽은 날짜를 이어 적어 다음 복습 분량을 정하세요."
+    ),
+    "운정": (
+        "주간 목표를 막연히 영어 공부하기로 적지 마세요. 월요일에는 읽을 문장과 시작 행동을, 금요일에는 "
+        "혼자 다시 읽고 설명할 문장을 적어 계획과 완료 기록을 비교하세요."
+    ),
+    "대야동": (
+        "학습 습관은 긴 분량보다 시작과 마무리가 이어지는지로 살핍니다. 시작 시각, 읽은 문장, 남은 질문을 "
+        "세 칸에 기록하고 다음 날 같은 순서로 다시 시작하는지 확인하세요."
+    ),
+    "동삭동": (
+        "학습 기록은 아이가 도움을 요청한 위치를 찾는 데 목적이 있습니다. 교재 쪽수, 멈춘 문장, 다시 읽은 "
+        "날짜를 이어 적고 다음 주 새 문장에서 도움 없이 뜻을 말하는지 확인하세요."
+    ),
+    "양평동": (
+        "공부 방향을 정할 때 학교 교재의 완료 표시와 설명이 멈춘 문장을 먼저 나누세요. 집에서는 표지가 "
+        "다른 짧은 글 한 편을 고르고, 아이가 멈춘 줄과 되물은 낱말을 연필로 표시합니다. 두 자료에서 "
+        "공통으로 막힌 기능만 다음 주 첫 행동으로 남기세요. 읽기 속도, 멈춘 이유와 다시 시작한 위치를 "
+        "적은 뒤 노란 줄에는 분량 부족을, 파란 줄에는 설명이 끊긴 위치를 표시하세요. 월요일과 목요일에는 "
+        "같은 질문 순서를 유지하고, 부모 도움 없이 시작한 문장과 스스로 고친 낱말만 표시해 교재를 바꿀지 "
+        "복습 순서를 바꿀지 구분합니다. 금요일에는 아이가 고른 복습 이유를 한 문장으로 받아 적어 다음 "
+        "상담의 첫 질문으로 사용하세요."
+    ),
+    "여수동": (
+        "진단 자료는 양을 늘리기보다 아이의 학습 순서를 드러내야 합니다. 학교 자료에는 도움 전 표시를, "
+        "평소 짧은 글에는 혼자 읽은 구간과 근거 문장을 남기세요. 날짜가 다른 기록을 섞지 말고 문장 읽기의 "
+        "변화가 확인된 뒤 다음 분량을 정합니다. 아이가 근거를 손가락으로 짚은 뒤 말로 설명한 문장만 "
+        "완료로 표시하면 정답과 실제 이해를 나누어 볼 수 있습니다. 첫날에는 낱말 뜻 질문, 셋째 날에는 "
+        "문장 순서 질문, 마지막 날에는 근거 위치 질문을 사용해 어느 단계에서 설명이 끊기는지 따로 남깁니다."
+    ),
+    "범어동": (
+        "범어동 주간표에서는 문장 읽기 재확인일과 과제 루틴 재확인일을 다른 색으로 표시하세요. 문장 쪽은 "
+        "뜻을 설명한 구간을, 루틴 쪽은 시작·완료 시각과 미완료 이유를 첫 기록과 비교합니다. 한 영역만 "
+        "달라졌다면 그 결과를 다른 영역의 변화로 합치지 말고 남은 행동만 다음 주로 옮기세요."
+    ),
+    "미사신도시": (
+        "미사신도시 주간표에는 분량을 줄인 날과 원래 분량을 시도한 날을 나누어 표시하세요. 첫날에는 "
+        "시작 전 머뭇거린 시간과 도움받은 문장을, 다시 확인한 날에는 혼자 시작한 시각과 뜻을 설명한 "
+        "구간을 적습니다. 분량을 줄여도 같은 문장에서 멈췄다면 학습 부담과 문장 이해를 다른 원인으로 "
+        "남기고 한 항목씩 다음 행동을 정하세요."
+    ),
+}
+
+
+def elementary_english_uses_oral_materials(
+    profile: ElementaryEnglishProfile,
+) -> bool:
+    """Return true when the two lead intents need audio or speaking materials."""
+
+    return any(
+        intent.code in {"listening", "speaking"}
+        for intent in profile.intents[:2]
+    )
+
+
+def elementary_english_uses_writing_materials(
+    profile: ElementaryEnglishProfile,
+) -> bool:
+    """Return true when the two lead intents need writing drafts and revisions."""
+
+    return any(intent.code == "writing" for intent in profile.intents[:2])
+
+
+def elementary_english_companion_material(
+    profile: ElementaryEnglishProfile,
+) -> str:
+    """Name the non-oral/non-writing material needed by the other lead intent."""
+
+    companion_codes = {
+        intent.code
+        for intent in profile.intents[:2]
+        if intent.code not in {"listening", "speaking", "writing"}
+    }
+    if companion_codes & {"phonics", "vocabulary", "sentence", "reading", "grammar"}:
+        return "읽기"
+    return "교재"
+
+
+def elementary_english_oralize_school_contrast(value: str) -> str:
+    """Adapt the school-vs-home contrast to listening and speaking evidence."""
+
+    replacements = (
+        (
+            "학교 진도표·최근 교재와 학습지·오답 기록",
+            "학교 진도표·최근 학습지·짧은 음원 기록·말하기 관찰 메모",
+        ),
+        (
+            "표시가 남아 있는 학습지와 학교 진도표",
+            "표시가 남은 학습지·짧은 음원 기록·말하기 관찰 메모와 학교 진도표",
+        ),
+        (
+            "최근에 푼 학습지 한 장과 현재 사용하는 교재",
+            "최근 학습지·짧은 음원 기록·말하기 관찰 메모와 현재 사용하는 교재",
+        ),
+        (
+            "학습지에서 막힌 위치를 표시해 상담에 가져갑니다",
+            "학습지의 표시와 짧은 음원에서 놓친 부분, 말하기가 막힌 위치를 메모해 상담에 가져갑니다",
+        ),
+        (
+            "학생이 멈춘 학습지를 보여 주며",
+            "학습지의 표시와 음원에서 놓친 부분, 말하기가 막힌 위치를 보여 주며",
+        ),
+        (
+            "최근 자료와 학교 진도표, 현재 교재",
+            "최근 학습지·짧은 음원 기록·말하기 관찰 메모와 학교 진도표·현재 교재",
+        ),
+        (
+            "교재와 주간 계획표",
+            "교재·짧은 음원 기록·말하기 관찰 메모와 주간 계획표",
+        ),
+        (
+            "학교 진도표와 표시가 남은 학습 자료",
+            "학교 진도표와 표시가 남은 학습지·짧은 음원 기록·말하기 관찰 메모",
+        ),
+        (
+            "최근에 푼 학습지 한 장으로",
+            "최근 학습지·짧은 음원 기록·말하기 관찰 메모로",
+        ),
+        (
+            "최근 교재와 학습지 한 장으로",
+            "최근 학습지·짧은 음원 기록·말하기 관찰 메모로",
+        ),
+        (
+            "학교 영어와 처음 보는 글 읽기 일정",
+            "학교 듣기·말하기 활동과 평소 음원·말하기 일정",
+        ),
+        (
+            "학교 영어와 처음 보는 글 읽기",
+            "학교 듣기·말하기 활동과 평소 음원·말하기 활동",
+        ),
+        (
+            "새 음원이나 말하기 질문은 새 지문과 재확인일",
+            "평소 듣기·말하기 활동은 새 음원이나 말하기 질문과 재확인일",
+        ),
+        (
+            "처음 보는 글에서는 아이가 새로 읽고 설명한 부분",
+            "평소 듣기·말하기 자료에서는 아이가 알아듣거나 말한 부분",
+        ),
+        ("평소 읽기 자료의 설명 흔적", "평소 듣기·말하기 자료의 수행 흔적"),
+        (
+            "처음 보는 글을 다시 읽을 날짜",
+            "새 음원이나 말하기 질문을 다시 확인할 날짜",
+        ),
+        (
+            "새 글 읽기에서는 낯선 문장을 스스로 이어 가는지",
+            "평소 듣기·말하기에서는 새 표현을 알아듣거나 질문에 이어 답하는지",
+        ),
+        ("학교 교재와 새 글 자료", "학교 교재와 평소 듣기·말하기 자료"),
+        ("어느 자료에서 설명이 멈췄는지", "어느 자료에서 수행이 막혔는지"),
+        ("새 글에서 멈춘 위치", "음원이나 말하기에서 막힌 위치"),
+        ("새 글 읽기", "평소 듣기·말하기 활동"),
+        ("처음 보는 글", "새 음원이나 말하기 질문"),
+        ("평소 읽기", "평소 듣기·말하기"),
+        ("가정 읽기", "가정 듣기·말하기"),
+        ("낯선 문장을 읽는 과정", "새 표현을 알아듣거나 질문에 답하는 과정"),
+        ("새 글", "평소 영어 활동"),
+        ("새 자료", "평소 영어 자료"),
+        ("새 음원이나 말하기 질문을 읽고 설명한 기록", "새 음원을 듣거나 말하기 질문에 답한 기록"),
+        ("새 음원이나 말하기 질문을 읽을", "새 음원이나 말하기 질문을 확인할"),
+        ("새 음원이나 말하기 질문 읽기", "새 음원 듣기·말하기 답변"),
+        ("평소 듣기·말하기 활동를", "평소 듣기·말하기 활동을"),
+        ("평소 듣기·말하기 활동는", "평소 듣기·말하기 활동은"),
+        ("새 음원이나 말하기 질문은 새 지문과 재확인일", "평소 듣기·말하기 활동은 새 음원이나 말하기 질문과 재확인일"),
+        ("새 음원이나 말하기 질문에서 근거를 찾은 문장", "새 음원에서 알아들은 표현이나 말하기 질문에 답한 문장"),
+        ("평소 듣기·말하기 문장을", "평소 듣거나 말한 문장을"),
+    )
+    for before, after in replacements:
+        value = value.replace(before, after)
+    return value
+
+
+def elementary_english_writingize_school_contrast(value: str) -> str:
+    """Adapt the school-vs-home contrast to writing drafts and revisions."""
+
+    replacements = (
+        (
+            "학교 진도표·최근 교재와 학습지·오답 기록",
+            "학교 진도표·최근 쓰기 학습지·초안·수정안",
+        ),
+        (
+            "표시가 남아 있는 학습지와 학교 진도표",
+            "표시가 남은 쓰기 학습지·초안·수정안과 학교 진도표",
+        ),
+        (
+            "최근에 푼 학습지 한 장과 현재 사용하는 교재",
+            "최근 쓰기 학습지의 초안·수정안과 현재 사용하는 교재",
+        ),
+        (
+            "학습지에서 막힌 위치를 표시해 상담에 가져갑니다",
+            "쓰기 학습지에서 문장을 시작하지 못한 위치와 초안·수정안을 표시해 상담에 가져갑니다",
+        ),
+        (
+            "학생이 멈춘 학습지를 보여 주며",
+            "학생이 문장을 시작하지 못한 쓰기 학습지와 초안·수정안을 보여 주며",
+        ),
+        (
+            "최근 자료와 학교 진도표, 현재 교재",
+            "최근 쓰기 학습지의 초안·수정안과 학교 진도표·현재 교재",
+        ),
+        (
+            "교재와 주간 계획표",
+            "교재·쓰기 초안·수정안과 주간 계획표",
+        ),
+        (
+            "학교 진도표와 표시가 남은 학습 자료",
+            "학교 진도표와 표시가 남은 쓰기 학습지·초안·수정안",
+        ),
+        (
+            "최근에 푼 학습지 한 장으로",
+            "최근 쓰기 학습지의 초안·수정안으로",
+        ),
+        (
+            "최근 교재와 학습지 한 장으로",
+            "최근 쓰기 학습지의 초안·수정안으로",
+        ),
+        (
+            "학교 영어와 처음 보는 글 읽기 일정",
+            "학교 쓰기 활동과 평소 짧은 문장 쓰기 일정",
+        ),
+        (
+            "학교 영어와 처음 보는 글 읽기",
+            "학교 쓰기 활동과 평소 짧은 문장 쓰기",
+        ),
+        (
+            "새 그림이나 질문의 쓰기 활동은 새 지문과 재확인일",
+            "평소 짧은 문장 쓰기는 새 그림이나 질문·초안과 재확인일",
+        ),
+        (
+            "처음 보는 글에서는 아이가 새로 읽고 설명한 부분",
+            "평소 쓰기 자료에서는 아이가 새 그림이나 질문에 쓴 초안과 수정안",
+        ),
+        ("평소 읽기 자료의 설명 흔적", "평소 쓰기 자료의 초안·수정 흔적"),
+        (
+            "처음 보는 글을 다시 읽을 날짜",
+            "새 그림이나 질문으로 문장을 다시 쓸 날짜",
+        ),
+        (
+            "새 글 읽기에서는 낯선 문장을 스스로 이어 가는지",
+            "평소 쓰기에서는 새 조건으로 문장을 완성하고 고치는지",
+        ),
+        ("학교 교재와 새 글 자료", "학교 쓰기 자료와 평소 짧은 쓰기 자료"),
+        ("어느 자료에서 설명이 멈췄는지", "어느 자료에서 문장 구성이 막혔는지"),
+        ("새 글에서 멈춘 위치", "쓰기 초안에서 막힌 위치"),
+        ("새 글 읽기", "평소 짧은 문장 쓰기"),
+        ("처음 보는 글", "새 그림이나 질문의 쓰기 활동"),
+        ("평소 읽기", "평소 짧은 문장 쓰기"),
+        ("가정 읽기", "가정 쓰기"),
+        ("낯선 문장을 읽는 과정", "조건에 맞춰 초안을 쓰고 고치는 과정"),
+        ("새 글", "평소 쓰기 활동"),
+        ("새 자료", "평소 쓰기 자료"),
+        ("새 그림이나 질문의 쓰기 활동을 읽고 설명한 기록", "새 그림이나 질문에 쓴 초안·수정 기록"),
+        ("새 그림이나 질문의 쓰기 활동을 읽을", "새 그림이나 질문으로 짧은 문장을 쓸"),
+        ("새 그림이나 질문의 쓰기 활동 읽기", "새 그림이나 질문으로 문장 쓰기"),
+        ("평소 짧은 문장 쓰기 활동를", "평소 짧은 문장 쓰기 활동을"),
+        ("평소 짧은 문장 쓰기 활동는", "평소 짧은 문장 쓰기 활동은"),
+        ("새 그림이나 질문의 쓰기 활동은 새 지문과 재확인일", "평소 짧은 문장 쓰기는 새 그림이나 질문·초안과 재확인일"),
+        ("새 그림이나 질문의 쓰기 활동에서 근거를 찾은 문장", "새 그림이나 질문에 쓴 문장과 수정한 부분"),
+        ("새 그림이나 질문의 쓰기 활동을 읽을 날", "새 그림이나 질문으로 짧은 문장을 쓸 날"),
+        ("평소 짧은 문장 쓰기 문장을", "평소 짧게 쓴 문장을"),
+        ("쓰기 학습지·초안·수정안를", "쓰기 학습지·초안·수정안을"),
+    )
+    for before, after in replacements:
+        value = value.replace(before, after)
+    return value
+
+
+def elementary_english_adapt_school_contrast(
+    value: str,
+    profile: ElementaryEnglishProfile,
+) -> str:
+    """Use evidence materials that match the two lead elementary intents."""
+
+    protected_values: list[str] = [profile.focus, *profile.source_markers]
+    for intent in profile.intents:
+        protected_values.extend((
+            intent.label,
+            intent.concern,
+            intent.evidence,
+            intent.action,
+            intent.checkpoint,
+            intent.exam_use,
+            intent.consult_question,
+            elementary_english_intent_material(intent),
+            elementary_english_recheck_result(intent),
+        ))
+    protected: list[tuple[str, str]] = []
+    for index, protected_value in enumerate(
+        sorted(set(protected_values), key=len, reverse=True)
+    ):
+        if protected_value and protected_value in value:
+            marker = f"__ELEMENTARY_ENGLISH_MATERIAL_{index}__"
+            value = value.replace(protected_value, marker)
+            protected.append((marker, protected_value))
+
+    oral = elementary_english_uses_oral_materials(profile)
+    writing = elementary_english_uses_writing_materials(profile)
+    if oral and writing:
+        replacements = (
+            (
+                "학교 진도표·최근 교재와 학습지·오답 기록",
+                "학교 진도표·최근 학습지·짧은 음원·말하기 관찰 메모·쓰기 초안·수정안",
+            ),
+            (
+                "표시가 남아 있는 학습지와 학교 진도표",
+                "표시가 남은 학습지·짧은 음원·말하기 관찰 메모·쓰기 초안·수정안과 학교 진도표",
+            ),
+            (
+                "최근에 푼 학습지 한 장과 현재 사용하는 교재",
+                "최근 학습지·짧은 음원·말하기 관찰 메모·쓰기 초안·수정안과 현재 교재",
+            ),
+            (
+                "학습지에서 막힌 위치를 표시해 상담에 가져갑니다",
+                "학습지의 표시, 음원에서 놓친 부분, 말하기가 막힌 위치와 쓰기 초안·수정안을 상담에 가져갑니다",
+            ),
+            (
+                "학생이 멈춘 학습지를 보여 주며",
+                "학습지의 표시, 음원·말하기에서 막힌 위치와 쓰기 초안·수정안을 보여 주며",
+            ),
+            (
+                "최근 자료와 학교 진도표, 현재 교재",
+                "최근 학습지·음원·말하기 관찰 메모·쓰기 초안·수정안과 학교 진도표·현재 교재",
+            ),
+            (
+                "교재와 주간 계획표",
+                "교재·음원·말하기 관찰 메모·쓰기 초안·수정안과 주간 계획표",
+            ),
+            (
+                "학교 진도표와 표시가 남은 학습 자료",
+                "학교 진도표와 표시가 남은 학습지·음원·말하기 관찰 메모·쓰기 초안·수정안",
+            ),
+            (
+                "최근에 푼 학습지 한 장으로",
+                "최근 학습지·음원·말하기 관찰 메모·쓰기 초안·수정안으로",
+            ),
+            (
+                "최근 교재와 학습지 한 장으로",
+                "최근 학습지·음원·말하기 관찰 메모·쓰기 초안·수정안으로",
+            ),
+            (
+                "학교 영어와 처음 보는 글 읽기 일정",
+                "학교 듣기·말하기·쓰기 활동과 평소 음원·말하기·짧은 쓰기 일정",
+            ),
+            (
+                "학교 영어와 처음 보는 글 읽기",
+                "학교 듣기·말하기·쓰기 활동과 평소 음원·말하기·짧은 쓰기 활동",
+            ),
+            (
+                "새 음원·말하기 질문·쓰기 활동은 새 지문과 재확인일",
+                "평소 듣기·말하기·쓰기는 새 음원·말하기 질문·쓰기 초안과 재확인일",
+            ),
+            (
+                "처음 보는 글에서는 아이가 새로 읽고 설명한 부분",
+                "평소 자료에서는 알아듣거나 말한 부분과 쓰기 초안·수정안",
+            ),
+            ("평소 읽기 자료의 설명 흔적", "평소 음원·말하기 수행과 쓰기 초안·수정 흔적"),
+            (
+                "처음 보는 글을 다시 읽을 날짜",
+                "새 음원·말하기 질문과 짧은 쓰기를 다시 확인할 날짜",
+            ),
+            (
+                "새 글 읽기에서는 낯선 문장을 스스로 이어 가는지",
+                "평소 자료에서는 새 표현을 알아듣거나 말하고 짧은 문장을 고치는지",
+            ),
+            ("학교 교재와 새 글 자료", "학교 활동 자료와 평소 음원·말하기·쓰기 자료"),
+            ("어느 자료에서 설명이 멈췄는지", "어느 자료에서 수행이나 문장 구성이 막혔는지"),
+            ("새 글에서 멈춘 위치", "음원·말하기 수행이나 쓰기 초안에서 막힌 위치"),
+            ("새 글 읽기", "평소 듣기·말하기·쓰기 활동"),
+            ("처음 보는 글", "새 음원·말하기 질문·쓰기 활동"),
+            ("평소 읽기", "평소 듣기·말하기·쓰기"),
+            ("가정 읽기", "가정 듣기·말하기·쓰기"),
+            ("낯선 문장을 읽는 과정", "새 표현을 듣고 말하거나 짧은 문장을 쓰고 고치는 과정"),
+            ("새 글", "평소 영어 활동"),
+            ("새 자료", "평소 영어 자료"),
+        )
+        for before, after in replacements:
+            value = value.replace(before, after)
+    elif oral:
+        value = elementary_english_oralize_school_contrast(value)
+        companion = elementary_english_companion_material(profile)
+        if companion == "교재":
+            protected_companion_phrases = (
+                ("평소 듣기·말하기용 자료·교재", "__ELEMENTARY_ORAL_TEXTBOOK_MATERIAL__"),
+                ("평소 음원·말하기 활동과 교재 학습", "__ELEMENTARY_ORAL_TEXTBOOK_PRACTICE__"),
+                ("평소 듣기·말하기 활동과 교재 학습", "__ELEMENTARY_ORAL_TEXTBOOK_ACTIVITY__"),
+                ("평소 음원·말하기와 교재 학습 일정", "__ELEMENTARY_ORAL_TEXTBOOK_SCHEDULE__"),
+                ("평소 듣기·말하기 기록과 교재 표시", "__ELEMENTARY_ORAL_TEXTBOOK_RECORD__"),
+                ("가정 듣기·말하기와 교재 학습", "__ELEMENTARY_ORAL_TEXTBOOK_HOME__"),
+            )
+            for phrase, marker in protected_companion_phrases:
+                value = value.replace(phrase, marker)
+            value = (
+                value
+                .replace("평소 듣기·말하기 자료", "평소 듣기·말하기용 자료·교재")
+                .replace("평소 음원·말하기 활동", "평소 음원·말하기 활동과 교재 학습")
+                .replace("평소 듣기·말하기 활동", "평소 듣기·말하기 활동과 교재 학습")
+                .replace("평소 음원·말하기 일정", "평소 음원·말하기와 교재 학습 일정")
+                .replace("평소 듣기·말하기 기록", "평소 듣기·말하기 기록과 교재 표시")
+                .replace("가정 듣기·말하기", "가정 듣기·말하기와 교재 학습")
+            )
+            for phrase, marker in protected_companion_phrases:
+                value = value.replace(marker, phrase)
+        else:
+            value = (
+                value
+                .replace("평소 듣기·말하기 자료", f"평소 듣기·말하기·{companion} 자료")
+                .replace("평소 음원·말하기 활동", f"평소 음원·말하기·{companion} 활동")
+                .replace("평소 듣기·말하기 활동", f"평소 듣기·말하기·{companion} 활동")
+                .replace("평소 음원·말하기 일정", f"평소 음원·말하기·{companion} 일정")
+                .replace("평소 듣기·말하기 기록", f"평소 듣기·말하기·{companion} 기록")
+                .replace("가정 듣기·말하기", f"가정 듣기·말하기·{companion}")
+                .replace(
+                    f"가정 듣기·말하기·{companion}·{companion}",
+                    f"가정 듣기·말하기·{companion}",
+                )
+            )
+    elif writing:
+        value = elementary_english_writingize_school_contrast(value)
+        value = (
+            value
+            .replace("학교 쓰기 자료", "학교 교재·쓰기 자료")
+            .replace("학교 쓰기 활동", "학교 영어·쓰기 활동")
+            .replace("평소 짧은 쓰기 자료", "평소 짧은 읽기·쓰기 자료")
+            .replace("평소 쓰기 자료", "평소 읽기·쓰기 자료")
+            .replace("평소 짧은 문장 쓰기", "평소 짧은 읽기·쓰기")
+            .replace("평소 쓰기에서는", "평소 읽기·쓰기에서는")
+            .replace("평소 쓰기 활동", "평소 읽기·쓰기 활동")
+            .replace("읽기·쓰기·쓰기", "읽기·쓰기")
+        )
+    for marker, protected_value in protected:
+        value = value.replace(marker, protected_value)
+    return value
+
+
+def elementary_english_adapt_material_tree(
+    value: object,
+    profile: ElementaryEnglishProfile,
+) -> object:
+    if isinstance(value, str):
+        return elementary_english_adapt_school_contrast(value, profile)
+    if isinstance(value, list):
+        return [elementary_english_adapt_material_tree(item, profile) for item in value]
+    if isinstance(value, tuple):
+        return tuple(elementary_english_adapt_material_tree(item, profile) for item in value)
+    if isinstance(value, dict):
+        return {
+            key: elementary_english_adapt_material_tree(item, profile)
+            for key, item in value.items()
+        }
+    return value
+
+
+def elementary_english_exam_note(
+    profile: ElementaryEnglishProfile,
+    locality: str,
+    seed: str,
+) -> str:
+    """Replace the reused high-school timing paragraph with elementary advice."""
+
+    if locality in ELEMENTARY_ENGLISH_SIMILARITY_PARAGRAPH_OVERRIDES:
+        return ELEMENTARY_ENGLISH_SIMILARITY_PARAGRAPH_OVERRIDES[locality]
+    primary, secondary, support, extra = profile.intents
+    primary_material = elementary_english_intent_material(primary)
+    secondary_material = elementary_english_intent_material(secondary)
+    material_pair = (
+        f"{primary_material}{particle_for(primary_material, '과', '와')} "
+        f"{secondary_material}"
+    )
+    primary_result = elementary_english_recheck_result(primary)
+    secondary_result = elementary_english_recheck_result(secondary)
+    support_result = elementary_english_recheck_result(support)
+    extra_result = elementary_english_recheck_result(extra)
+    note = stable_pick(seed, "elementary-exam-note-v4", (
+        f"학교 일정이 있는 주에도 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}{particle_for(secondary.label, '을', '를')} 한 분량으로 묶지 마세요. {primary.label}{particle_for(primary.label, '을', '를')} 먼저 확인하고 {secondary.label}{particle_for(secondary.label, '은', '는')} 별도로 살필 날짜를 정합니다.",
+        f"‘{profile.focus}’을 확인한 날에는 두 자료의 첫 결과와 재확인 결과를 다른 줄에 적으세요. {primary_result}{particle_for(primary_result, '과', '와')} {secondary_result}{particle_for(secondary_result, '을', '를')} 각각 해당 자료의 첫 기록과 대조합니다.",
+        f"{primary.label}{particle_for(primary.label, '은', '는')} {primary_material}{particle_for(primary_material, '을', '를')}, {secondary.label}{particle_for(secondary.label, '은', '는')} {secondary_material}{particle_for(secondary_material, '을', '를')} 확인 항목으로 두세요. 같은 날 활동했더라도 재확인 결과를 섞지 않아야 다음 행동을 정확히 정할 수 있습니다.",
+        f"이번 주에는 {material_pair}{particle_for(secondary_material, '을', '를')} 서로 다른 행에 둡니다. {primary_result}{particle_for(primary_result, '과', '와')} {secondary_result}{particle_for(secondary_result, '은', '는')} 각각 해당 자료의 첫 기록과 대조한 뒤 다음 활동을 정하세요.",
+        f"학교 진도 때문에 두 영역의 평소 활동을 모두 미루지 마세요. ‘{primary.action}’을 짧게라도 실행하고, {secondary_result}{particle_for(secondary_result, '을', '를')} 확인할 날짜는 따로 잡습니다.",
+        f"이 학습 주제를 계획으로 옮길 때 두 자료의 위치·확인 날짜를 따로 적으세요. {primary_result}{particle_for(primary_result, '과', '와')} {secondary_result} 중 달라진 항목만 다음 활동에 반영합니다.",
+        f"학교 일정과 가정 학습 목표를 한 줄로 합치지 않습니다. {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}에 해당하는 자료 위치와 아이의 설명을 각각 적어 현재선을 확인하세요.",
+        f"학교 단원 활동이 끝난 뒤에는 점수 하나보다 {primary_result}{particle_for(primary_result, '과', '와')} {secondary_result}{particle_for(secondary_result, '을', '를')} 봅니다. 두 결과가 나온 자료를 표시하고 어려움이 남은 영역만 다음 계획에 적으세요.",
+        f"학습표에는 {primary_material}{particle_for(primary_material, '을', '를')} 볼 날과 {secondary_material}{particle_for(secondary_material, '을', '를')} 볼 날을 나눠 적습니다. ‘{primary.action}’ 뒤 ‘{primary.checkpoint}’를 살필 날짜가 같은 영역의 계획에 이어지는지도 확인하세요.",
+        f"{locality} 학습 기록에서 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}{particle_for(secondary.label, '을', '를')} 별도 항목으로 두세요. 두 영역의 첫 결과와 재확인 결과를 같은 기준으로 비교해 달라진 지점을 다음 복습의 근거로 삼습니다.",
+        f"두 자료에서 모두 어려움이 보이면 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label} 중 먼저 도울 영역을 정합니다. 한쪽에서만 막혔다면 자료와 행동을 섞지 말고 해당 영역의 재확인일만 따로 기록하세요.",
+        f"이번 주에는 {primary.label}에서 확인할 한 항목과 {secondary.label}에서 확인할 한 항목을 고릅니다. 각 영역에서 실행할 행동과 재확인일을 따로 정하고 달라진 결과만 다음 주 계획에 남기세요.",
+    ))
+    return note
+
+
+def elementary_english_school_reading_context(
+    profile: ElementaryEnglishProfile,
+    locality: str,
+    seed: str,
+) -> str:
+    """Compare evidence materials that match the page's two lead intents."""
+
+    primary, secondary = profile.intents[:2]
+    primary_material = elementary_english_intent_material(primary)
+    secondary_material = elementary_english_intent_material(secondary)
+    material_pair = (
+        f"{primary_material}{particle_for(primary_material, '과', '와')} "
+        f"{secondary_material}"
+    )
+    selected = stable_pick(seed, "elementary-school-reading-context-v2", (
+        f"{primary.label}은 {primary_material}에서, {secondary.label}은 {secondary_material}에서 확인하세요. 자료 위치·아이의 설명·확인 날짜를 각각 다른 줄에 남겨 두 영역의 결과를 섞지 않습니다.",
+        f"두 영역에서 확인한 첫 결과를 같은 기록으로 합치지 마세요. {primary.label}과 {secondary.label}에서 멈춘 지점과 다시 볼 날짜를 자료별로 적습니다.",
+        f"{primary_material}{particle_for(primary_material, '을', '를')} 볼 날짜와 {secondary_material}{particle_for(secondary_material, '을', '를')} 볼 날짜를 다른 줄에 적으세요. 각 날짜에 아이가 혼자 마친 범위와 도움받은 지점도 함께 기록합니다.",
+        f"{primary.label}의 현재선은 {primary_material}에서, {secondary.label}의 현재선은 {secondary_material}에서 찾습니다. 한 번의 결과로 묶지 말고 각 자료에서 달라진 수행을 따로 확인하세요.",
+        f"주간표에 {material_pair}{particle_for(secondary_material, '을', '를')} 두 줄로 나눈 뒤 두 영역에서 정한 활동을 마친 기록을 적으세요. 어느 자료에서 수행이 멈췄는지가 다음 복습 순서를 정하는 근거입니다.",
+        f"학교 일정이 많은 주에도 두 영역의 확인을 한쪽으로 몰지 마세요. {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label} 자료에 혼자 마친 범위·멈춘 위치를 남기고 다음 행동을 각각 정합니다.",
+        f"{locality} 기록표에는 첫 칸의 확인 항목으로 {primary_material}{particle_for(primary_material, '을', '를')}, 둘째 칸의 확인 항목으로 {secondary_material}{particle_for(secondary_material, '을', '를')} 적습니다. 두 칸의 첫 기록과 재확인 결과만 같은 기준으로 비교하세요.",
+        f"두 영역이 같은 교재에 있어도 {primary.label}과 {secondary.label}의 근거는 다른 칸에 표시하세요. 첫 칸의 확인 항목은 {primary_material}, 둘째 칸의 확인 항목은 {secondary_material}입니다. 자료별 실행일과 재확인일도 따로 남깁니다.",
+    ))
+    return selected
+
+
+def elementary_english_material_contrast_faq(
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> tuple[str, str]:
+    """Create an intent-specific FAQ without assuming that every page is about reading."""
+
+    primary, secondary = profile.intents[:2]
+    primary_material = elementary_english_intent_material(primary)
+    secondary_material = elementary_english_intent_material(secondary)
+    material_pair = (
+        f"{primary_material}{particle_for(primary_material, '과', '와')} "
+        f"{secondary_material}"
+    )
+    primary_result = elementary_english_recheck_result(primary)
+    secondary_result = elementary_english_recheck_result(secondary)
+    primary_short_action = elementary_english_short_action(primary)
+    secondary_short_action = elementary_english_short_action(secondary)
+    pair = f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}"
+    question = (
+        f"{pair}: {primary_material}{particle_for(primary_material, '과', '와')} "
+        f"{secondary_material}{particle_for(secondary_material, '은', '는')} 어떻게 나눠 확인하나요?"
+    )
+    answer = stable_pick(seed, "elementary-material-faq-v2", (
+        f"{primary.label}: {primary_material}에서 ‘{primary_short_action}’{particle_for(primary_short_action, '을', '를')} 실행하고 {primary_result}{particle_for(primary_result, '을', '를')} 남기세요. {secondary.label}: {secondary_material}에서 ‘{secondary_short_action}’{particle_for(secondary_short_action, '을', '를')} 실행하고 {secondary_result}{particle_for(secondary_result, '을', '를')} 적습니다. 두 결과는 각각 해당 자료의 첫 기록과 비교하세요.",
+        f"첫 칸에는 {primary.label}{particle_for(primary.label, '을', '를')} 확인한 자료 위치·실행일·{primary_result}{particle_for(primary_result, '을', '를')}, 둘째 칸에는 {secondary.label}{particle_for(secondary.label, '을', '를')} 확인한 자료 위치·실행일·{secondary_result}{particle_for(secondary_result, '을', '를')} 적으세요. 같은 날 확인해도 결과는 자료별로 판단합니다.",
+        f"{primary.label}은 {primary_material}에서 ‘{primary.checkpoint}’{particle_for(primary.checkpoint, '을', '를')} 확인하고, {secondary.label}은 {secondary_material}에서 ‘{secondary.checkpoint}’{particle_for(secondary.checkpoint, '을', '를')} 살핍니다. 각 결과와 다시 볼 날짜를 다른 줄에 남기세요.",
+        f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label} 자료를 각각 한 곳씩 고른 뒤 아이가 혼자 시작한 지점·도움받은 지점·마친 범위를 표시하세요. 첫 칸에는 {primary_material}{particle_for(primary_material, '을', '를')}, 둘째 칸에는 {secondary_material}{particle_for(secondary_material, '을', '를')} 확인 항목으로 둡니다.",
+        f"자료 이름만 적지 말고 {primary.label}에는 {primary_result}{particle_for(primary_result, '을', '를')}, {secondary.label}에는 {secondary_result}{particle_for(secondary_result, '을', '를')} 남기세요. 두 자료에서 달라진 지점을 확인한 뒤 어려움이 남은 영역의 다음 행동만 정합니다.",
+        f"{primary.label}{particle_for(primary.label, '은', '는')} {primary_material}{particle_for(primary_material, '을', '를')}, {secondary.label}{particle_for(secondary.label, '은', '는')} {secondary_material}{particle_for(secondary_material, '을', '를')} 확인 항목으로 둡니다. 재확인일에는 첫 수행과 같은 기준으로 {primary_result}{particle_for(primary_result, '과', '와')} {secondary_result}{particle_for(secondary_result, '을', '를')} 각각 비교하세요.",
+    ))
+    return question, answer
+
+
+def elementary_english_school_reading_step(
+    profile: ElementaryEnglishProfile,
+    locality: str,
+    seed: str,
+) -> str:
+    """Keep the school-unit row and unfamiliar-reading row logically separate."""
+
+    primary, secondary = profile.intents[:2]
+    closing = stable_pick(seed, "elementary-school-reading-step-close-v2", (
+        "각 자료에서 도움받은 지점과 아이가 혼자 마친 범위, 다시 볼 날짜를 따로 적어 어느 기능을 먼저 보완할지 정합니다.",
+        f"두 줄마다 도움받은 위치·혼자 끝낸 범위·다시 볼 날짜를 적고 {primary.label}과 {secondary.label} 중 먼저 도울 영역을 고르세요.",
+        "학교 자료와 평소 자료 각각에 도움받은 지점과 혼자 이어 간 범위를 표시한 뒤 재확인 날짜를 따로 정하세요.",
+        f"{primary.label} 기록과 {secondary.label} 기록에 도움 여부와 완료 범위를 따로 남기면 다음 활동의 순서를 구체적으로 정할 수 있습니다.",
+        "아이에게 두 자료에서 혼자 끝낸 부분을 짚게 하고, 도움이 남은 기능만 날짜를 정해 다시 확인하세요.",
+        f"실행 뒤에는 {primary.label} 자료와 {secondary.label} 자료에서 멈춘 위치·다시 시작한 위치를 각각 적어 다음 복습 범위를 정합니다.",
+        "같은 날 확인하더라도 자료 이름·도움받은 부분·혼자 마친 부분을 별도 칸에 남겨 변화가 생긴 기능부터 다음 단계로 옮기세요.",
+        f"마지막에는 {primary.label}과 {secondary.label}에서 정한 활동을 마친 기록을 비교하고, 아직 도움이 필요한 쪽의 재확인일만 새로 잡으세요.",
+    ))
+    primary_material = elementary_english_intent_material(primary)
+    secondary_material = elementary_english_intent_material(secondary)
+    return clean(
+        f"{locality}에서는 {primary.label}{particle_for(primary.label, '을', '를')} 확인할 {primary_material}{particle_for(primary_material, '과', '와')} "
+        f"{secondary.label}{particle_for(secondary.label, '을', '를')} 확인할 {secondary_material}{particle_for(secondary_material, '을', '를')} 다른 줄에 둡니다. "
+        f"‘{primary.action}’{particle_for(primary.action, '과', '와')} ‘{secondary.action}’{particle_for(secondary.action, '을', '를')} 각각 해당 자료에서 짧게 실행하세요. "
+        f"{closing}"
+    )
+
+
+def elementary_english_diagnostic_note(
+    profile: ElementaryEnglishProfile,
+    locality: str,
+    seed: str,
+) -> str:
+    """Compare two intent records without putting one intent inside the other."""
+
+    primary, secondary = profile.intents[:2]
+    options = (
+        f"{locality} 기록표를 {primary.label}과 {secondary.label} 두 칸으로 나누세요. 각 칸에 자료 위치·실행일·재확인일을 적어 두 영역의 기록을 섞지 않습니다.",
+        f"{primary.label} 기록과 {secondary.label} 기록은 같은 줄에 합치지 마세요. 각 기록에 시작 자료·도움받은 지점·다시 볼 날짜를 따로 적어 변화가 생긴 영역만 다음 계획에 남깁니다.",
+        f"자료를 펼친 뒤 {primary.label} 표시와 {secondary.label} 표시를 서로 다른 색이나 칸으로 구분하세요. 각 칸의 실행 결과와 재확인 날짜를 따로 남기면 어느 영역부터 조정할지 알 수 있습니다.",
+        f"{locality} 상담 메모에는 {primary.label}의 자료와 {secondary.label}의 자료를 별도 항목으로 적으세요. 한쪽의 재확인 결과를 다른 쪽의 변화로 해석하지 않는 것이 중요합니다.",
+        f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}의 각 기록에 처음 멈춘 지점·실행일·재확인 지점·재확인 날짜를 적으세요. 두 기록이 모두 있어야 설명이 필요한 영역과 혼자 연습할 영역을 나눌 수 있습니다.",
+        f"한 장의 기록표를 쓰더라도 {primary.label}과 {secondary.label}은 다른 행에 둡니다. 자료 이름·한 행동·재확인 결과를 각 행에 따로 적고 다음 주 우선순위를 정하세요.",
+        f"{locality} 자료에서 {primary.label}과 {secondary.label}의 흔적을 각각 찾으세요. 발견한 쪽수와 날짜를 별도 칸에 남긴 뒤, 같은 기준으로 다시 확인한 결과만 비교합니다.",
+        f"{primary.label}의 첫 기록을 만든 뒤 {secondary.label}도 별도 자료에서 확인하세요. 두 영역의 실행일과 다시 볼 날짜를 나누어 적으면 한쪽의 어려움이 다른 쪽에 섞이지 않습니다.",
+        f"학습 메모에는 {primary.label}과 {secondary.label}을 구분하는 선을 먼저 긋습니다. 각 영역의 자료 위치, 아이가 한 행동과 다음 확인일을 따로 적어 상담 질문을 구체화하세요.",
+        f"{primary.label} 자료와 {secondary.label} 자료가 같은 교재 안에 있어도 기록 칸은 분리하세요. 각각 어디서 멈췄고 언제 다시 확인했는지를 남겨 다음 행동을 정합니다.",
+        f"{locality} 기록에서는 {primary.label}의 변화와 {secondary.label}의 변화를 따로 판단합니다. 각 영역에 해당하는 자료·실행·재확인 날짜를 한 줄씩 적고 결과가 달라진 이유를 비교하세요.",
+        f"먼저 {primary.label} 기록을 완성하고, 다음 줄에 {secondary.label} 기록을 만드세요. 자료 위치와 도움 여부, 재확인일을 각 줄에 따로 두면 두 영역의 피드백이 선명해집니다.",
+    )
+    return stable_pick(seed, "elementary-diagnostic-note-v1", options)
+
+
+def elementary_english_focus_support(
+    profile: ElementaryEnglishProfile,
+    locality: str,
+) -> str:
+    """Give source-title promises a concrete, child-level checking procedure."""
+
+    focus = profile.focus
+    primary, secondary = profile.intents[:2]
+    primary_material = elementary_english_intent_material(primary)
+    secondary_material = elementary_english_intent_material(secondary)
+    if "첫 시험" in focus:
+        return (
+            f"‘{focus}’은 아직 공개되지 않은 중1 시험 범위나 유형을 미리 단정하는 뜻이 아닙니다. "
+            "초6 교재에서 어휘 뜻 찾기, 문장 근거 읽기와 짧은 문장 쓰기를 각각 해 보고, "
+            "도움 없이 설명한 항목과 다시 볼 항목을 나누세요. 입학 뒤 학교의 실제 범위·유형·일정이 나오면 그 자료에 맞춰 계획을 다시 조정합니다."
+        )
+    if "시험 직전" in focus:
+        return (
+            f"‘{focus}’은 새 자료를 많이 더하기보다 실제 학교 범위와 남은 시간을 먼저 확인하는 과정입니다. 최근 틀린 기록을 낱말·문장·내용 이해로 나누고 반복된 한 영역만 골라 짧게 다시 해 보세요. "
+            "마지막 확인에서는 답을 외웠는지가 아니라 비슷한 새 문장에서 틀린 이유와 고친 근거를 설명하는지 살핍니다."
+        )
+    if "시험 전" in focus:
+        return (
+            f"‘{focus}’은 실제 학교 범위·일정·활동 형식이 확인된 뒤 계획합니다. 학교 자료의 마감일과 평소 기초 연습일을 다른 줄에 두고, 매일 끝낼 최소 활동과 다시 볼 날짜를 적으세요. "
+            "완료 기록이 없거나 같은 어려움이 반복되면 새 진도보다 해당 영역의 짧은 재확인을 먼저 배치합니다."
+        )
+    if "시험 후" in focus or "시험 뒤" in focus:
+        return (
+            f"‘{focus}’은 점수만 적고 끝내지 않습니다. 처음 답과 아이가 고른 이유를 남긴 뒤 틀린 지점을 낱말·문장·내용 이해·쓰기 중 하나로 나누고, 설명 뒤 고친 부분을 표시하세요. "
+            "며칠 뒤 비슷한 새 활동에서 같은 실수가 줄었는지 확인한 결과를 다음 계획에 반영합니다."
+        )
+    if "학원 변경" in focus:
+        return (
+            f"‘{focus}’은 막연한 만족도만으로 결정하지 않습니다. 현재 학원이나 교재에서 실행한 활동, 도움받은 지점과 재확인 결과를 먼저 모으고, 상담에서 막힌 이유와 바꿀 학습 절차를 구체적으로 물으세요. "
+            "변경 전후에도 같은 기능의 짧은 활동을 같은 방식으로 기록할 수 있는지 살피고, 비교할 첫 기록이 없다면 변경 판단보다 현재선 확인을 먼저 합니다."
+        )
+    if "긴 글" in focus and any(
+        token in focus for token in ("집중", "흐름", "습관")
+    ):
+        return (
+            f"‘{focus}’은 처음부터 긴 글 전체를 읽히는 뜻이 아닙니다. 첫 주에는 두 문단에서 시작 시각·멈춘 문장·다시 읽은 위치를 표시하고, "
+            "중간 점검에서는 한 문단을 더해 문단 사이의 내용 순서를 설명하게 하세요. 마지막에는 같은 길이의 새 글에서 도움 없이 이어 읽은 문단과 근거를 찾은 문장을 비교합니다."
+        )
+    if "읽기 속도" in focus:
+        return (
+            f"‘{focus}’은 빨리 읽게 하는 목표만 두지 않습니다. 길이가 비슷한 두 글에서 읽은 시간, 멈춘 문장과 다시 읽은 횟수를 적고, 읽은 뒤에는 내용 순서와 답의 근거를 설명하게 하세요. "
+            "시간이 줄어도 이해 근거가 약해졌다면 속도 향상으로 단정하지 않고 두 기록을 함께 비교합니다."
+        )
+    if "다음 글" in focus:
+        return (
+            f"‘{focus}’은 현재 글과 길이가 비슷한 자료에서 시작해 낯선 낱말 수·문장 길이·도움 여부 중 한 조건만 높여 보는 방식으로 정하세요. "
+            "아이에게 멈춘 문장과 내용 순서를 설명하게 하고, 도움 없이 끝낸 범위가 유지될 때 다음 글의 조건을 한 단계 조정합니다."
+        )
+    if "시간 배분" in focus or "학습 시간을 나누어" in focus:
+        return (
+            f"‘{focus}’은 사용할 수 있는 주간 시간과 학교 활동 마감일을 먼저 적는 데서 시작합니다. {primary.label} 관련 활동과 {secondary.label} 관련 활동의 최소 분량을 다른 칸에 두고, 각 활동의 시작·완료 기록을 남기세요. "
+            "완료하지 못한 날에는 이해와 시간 중 원인을 나눈 뒤 다음 주 분량과 순서를 조정합니다."
+        )
+    if "시기" in focus or "시점" in focus:
+        return (
+            f"‘{focus}’은 실제 학교 단원 일정과 확인할 활동 날짜를 먼저 적어 정하세요. 현재 자료의 첫 기록일에서 재확인일까지 필요한 짧은 행동을 나누고, 학교 일정이 확인되지 않았다면 특정 시작일을 미리 단정하지 않습니다. "
+            "첫 활동에서 혼자 끝낸 범위와 도움받은 지점을 보고 다음 행동의 날짜와 분량을 조정하세요."
+        )
+    if "강점" in focus:
+        return (
+            f"‘{focus}’은 잘한 점을 막연히 칭찬하는 데서 끝내지 않습니다. 아이가 도움 없이 시작하고 끝낸 영어 활동, 근거를 설명한 부분과 다시 해도 유지된 기능을 강점 기록으로 남기세요. "
+            "다음 학습에서는 그 기능을 낱말이나 상황이 조금 달라진 활동에 먼저 적용한 뒤, 막힌 영역을 연결해 연습합니다."
+        )
+    if "영어 일기" in focus:
+        return (
+            f"‘{focus}’은 날짜와 그날의 사건 하나를 고른 뒤 필요한 영어 낱말을 먼저 적는 데서 시작합니다. 아이가 낱말을 한두 문장으로 배열해 소리 내어 읽고, "
+            "빠진 낱말이나 어순을 스스로 고친 흔적을 초안과 함께 남기세요. 다음 일기에서는 도움 없이 고른 낱말과 완성한 문장 범위를 비교합니다."
+        )
+    if "점수와 실력" in focus:
+        return (
+            f"‘{focus}’은 점수 한 줄을 실력으로 단정하지 않습니다. 점수표에서 어휘·문장·내용 이해처럼 문항별로 맞고 틀린 영역을 나누고, 같은 기능의 짧은 새 활동에서 아이가 혼자 설명한 범위를 따로 기록하세요. "
+            "점수와 실제 수행이 다르면 답을 외웠는지, 문제를 잘못 읽었는지와 도움받은 지점을 확인한 뒤 다음 행동을 정합니다."
+        )
+    if "학습 태도" in focus:
+        return (
+            f"‘{focus}’은 인상이나 성격 평가가 아닙니다. 활동을 스스로 시작했는지, 끝까지 이어 갔는지, 막힌 곳에서 도움을 요청했는지와 설명 뒤 다시 시작했는지를 별도 항목으로 적으세요. "
+            "같은 분량의 다음 활동에서 네 행동이 어떻게 달라졌는지 비교해 학습 절차를 조정합니다."
+        )
+    if "생각하는 힘" in focus or "사고력" in focus:
+        return (
+            f"‘{focus}’은 막연한 능력 향상을 뜻하지 않습니다. 짧은 글에서 문장 순서를 짚고, 낱말 뜻을 문맥과 연결하며, 답을 고른 근거 문장을 아이가 직접 설명하는 과정으로 확인하세요. "
+            "새 글에서도 같은 세 행동을 혼자 수행한 범위를 첫 기록과 비교합니다."
+        )
+    if "빈칸" in focus:
+        return (
+            f"‘{focus}’은 빈칸 앞뒤 문장을 먼저 읽고 알맞은 낱말을 고른 뒤, 그 낱말을 선택한 단서를 아이가 말하게 하는 순서로 확인하세요."
+        )
+    if "수동태" in focus:
+        return (
+            f"‘{focus}’은 형태만 외우는 데서 끝내지 않습니다. 짧은 문장에서 행동한 주체와 행동을 받은 대상을 먼저 나누고, "
+            "be동사와 과거분사 형태를 표시한 뒤 같은 뜻의 능동문과 비교하세요. 낱말이 바뀐 새 문장에서도 대상과 형태를 스스로 설명하는지 다시 확인합니다."
+        )
+    if "비교 표현" in focus or "비교급" in focus or "최상급" in focus:
+        return (
+            f"‘{focus}’은 두 대상을 나타내는 낱말과 성질을 먼저 고른 뒤 비교급(-er·more)과 than이 무엇을 비교하는지 표시하며 확인하세요. "
+            "세 대상 이상을 비교할 때는 최상급(-est·most)이 가리키는 대상을 따로 찾고, 낱말이 바뀐 새 문장에서도 비교 대상을 설명하는지 다시 살핍니다."
+        )
+    if "문단" in focus:
+        return (
+            f"‘{focus}’은 두세 문장을 한 묶음으로 읽고 누가 무엇을 했는지 순서를 말하게 한 뒤, 한 문장 뜻과 문단 전체 흐름을 나누어 기록하는 활동입니다."
+        )
+    if "적응" in focus or "처음 시작" in focus:
+        return (
+            f"‘{focus}’은 첫 주에 짧은 읽기·말하기 활동 하나를 끝내고 막힌 지점을 표시한 뒤, 같은 분량을 다시 시작할 수 있는지 확인하는 과정입니다."
+        )
+    if "원서" in focus:
+        return (
+            f"‘{focus}’은 책의 이름이나 권수보다 아이가 한 번에 읽을 분량을 정하는 데서 시작합니다. "
+            "낯선 낱말에 표시하고 문단마다 누가 무엇을 했는지 한 문장으로 말하게 한 뒤, 다음 읽기에서도 같은 분량을 혼자 시작했는지 기록하세요."
+        )
+    if ("긴장" in focus or "불안" in focus) and any(
+        token in focus for token in ("한 달", "장기", "오래")
+    ):
+        return (
+            f"‘{focus}’은 긴장을 없애거나 성과를 약속하는 표현이 아닙니다. 첫 주에는 학교 단원 활동 전 머뭇거린 시간·건너뛴 문항·끝난 뒤 설명한 근거를 기준선으로 남기고, "
+            "중간 주에는 같은 분량에서 시작 행동과 확인 순서를 다시 기록하세요. 마지막 주에는 비슷한 새 활동의 기록을 첫 주와 비교해 달라진 한 행동만 다음 계획에 반영합니다."
+        )
+    if "긴장" in focus or "불안" in focus:
+        return (
+            f"‘{focus}’은 긴장을 없앤다고 약속하는 표현이 아닙니다. 짧은 학교 단원 활동에서 시작 전 머뭇거린 시간, 건너뛴 문항과 끝난 뒤 설명한 근거를 나누어 적고, "
+            "같은 분량을 다시 볼 때 시작 행동과 확인 순서가 안정되는지 살피세요."
+        )
+    if "난이도" in focus:
+        return (
+            f"‘{focus}’은 정답률 하나로 교재를 바로 바꾸는 일이 아닙니다. 비슷한 길이의 두 활동에서 혼자 시작한 문항, 설명이 필요한 문항과 끝까지 마친 범위를 비교하고, "
+            "도움이 계속 필요한 단계만 한 칸 낮춰 다시 확인하세요."
+        )
+    if "발음" in focus and "독해" in focus:
+        return (
+            f"‘{focus}’은 읽는 소리와 글의 이해를 따로 확인합니다. 짧은 새 글을 소리 내어 읽으며 멈춘 글자를 표시하고, 읽은 뒤에는 누가 무엇을 했는지와 답의 근거 문장을 말하게 하세요. "
+            "다음 확인에서도 두 기록을 섞지 말고 각각 비교합니다."
+        )
+    if "자신감" in focus:
+        return (
+            f"‘{focus}’을 도움 요청 횟수 하나로 단정하지 마세요. 아이가 먼저 시작한 활동, 막힌 곳을 말한 순간과 설명 뒤 혼자 다시 해 본 범위를 각각 기록하고, "
+            "아이에게 어떤 활동이 덜 부담스러웠는지도 직접 물어 함께 판단하세요."
+        )
+    if "영어로 설명" in focus or "영어로 말" in focus:
+        return (
+            f"‘{focus}’은 긴 답을 바로 요구하는 뜻이 아닙니다. 그림이나 짧은 글에서 핵심 낱말을 고른 뒤 한 문장으로 말하게 하고, 도움받은 표현과 혼자 다시 말한 부분을 나누어 적으세요. "
+            "표현이 조금 달라진 질문에서도 같은 뜻을 말하는지 다시 확인합니다."
+        )
+    if "영어 문장으로 설명" in focus or "생각한 내용" in focus:
+        return (
+            f"‘{focus}’은 그림이나 짧은 글에서 핵심 낱말을 고른 뒤, 아이가 그 낱말을 배열해 영어 한 문장으로 말하거나 쓰는 순서로 확인하세요. "
+            "처음 만든 문장과 도움 뒤 고친 문장을 함께 남기고, 비슷한 새 상황에서도 필요한 낱말을 스스로 골라 설명하는지 다시 살핍니다."
+        )
+    if "문장 만들" in focus or "문장을 만들" in focus or "문장 쓰" in focus:
+        return (
+            f"‘{focus}’은 그림이나 질문에서 필요한 낱말을 고르고 짧은 영어 문장으로 배열한 뒤, 소리 내어 읽으며 빠진 낱말과 어순을 스스로 고치는 순서로 확인하세요. "
+            "비슷한 상황에서 다시 쓴 문장도 초안과 수정안으로 나누어 남깁니다."
+        )
+    if "방학" in focus and "선행" in focus:
+        return (
+            f"‘{focus}’은 실제 방학 일정 안에서 현재 학년 복습과 한 단계 높은 짧은 예시를 다른 칸에 배치합니다. 먼저 반복해 막힌 기능을 현재 교재로 다시 확인하고, 도움 없이 설명한 범위가 유지될 때만 난도를 높인 예시 하나를 해 보세요. "
+            "복습 기록이 남아 있지 않거나 선행 예시에서 도움이 계속 필요하면 다음 주에는 복습 비중을 늘립니다."
+        )
+    if "방학" in focus:
+        return (
+            f"‘{focus}’은 실제 방학 일정에 맞춰 시작 주·중간 확인 주·개학 전 주를 나누는 계획입니다. 시작 주에는 현재 자료를 남기고, 중간에는 분량과 도움받은 지점을 조정하며, "
+            "개학 전에는 같은 기능의 새 활동으로 남은 어려움을 확인하세요."
+        )
+    if "숙제" in focus and any(token in focus for token in ("부담", "갈등", "거부")):
+        return (
+            f"‘{focus}’은 감정의 변화를 단정하거나 숙제 양만 늘리는 뜻이 아닙니다. 시작 전 머뭇거린 지점, 끝낸 최소 분량, 도움을 요청한 순간과 미완료 이유를 나누어 적으세요. "
+            "다음 활동에서는 분량을 조정한 뒤 시작·완료 여부와 설명 뒤 다시 한 범위가 달라졌는지 확인합니다."
+        )
+    if "숙제" in focus:
+        return (
+            f"‘{focus}’은 숙제 양만 늘리는 뜻이 아닙니다. 시작·완료 시각, 도움받은 항목과 미완료 이유를 각각 적고, 끝낸 뒤에는 숙제에서 막힌 문장 하나를 다시 설명하게 하세요. "
+            "다음 계획에서는 혼자 끝낸 범위는 유지하고 반복해 막힌 항목만 분량을 줄여 다시 확인합니다."
+        )
+    if "누적 복습" in focus:
+        return (
+            f"‘{focus}’은 지난 기록을 쌓아 두기만 하는 뜻이 아닙니다. 매주 반복해 막힌 낱말·문장·내용 이해 중 한 기능을 골라 첫 기록, 이번 주 행동과 새 자료의 재확인 결과를 같은 줄에 이어 적으세요. "
+            "같은 어려움이 다시 나타난 횟수와 도움 없이 수행한 범위를 보고 다음 복습 항목을 정합니다."
+        )
+    if "한 달" in focus or "장기" in focus or "오래" in focus:
+        return (
+            f"‘{focus}’은 먼 결과를 약속하기보다 첫 주 기준선·중간 실행 기록·마지막 주 재확인의 세 구간으로 나눕니다. 매주 {primary.label}과 {secondary.label} 중 달라진 한 항목만 다음 계획에 반영하세요."
+        )
+    if "학년" in focus:
+        return (
+            f"‘{focus}’은 학년 이름만으로 교재 난도나 아이의 실력을 단정하는 뜻이 아닙니다. 현재 학년의 실제 학교 교재에서 어휘·문장 읽기·짧은 쓰기 기록을 먼저 남기고, "
+            "다른 학년 자료는 학교나 센터에서 사용할 자료가 확인된 뒤 같은 기능의 짧은 예시 하나만 비교하세요. 각 자료의 도움 여부와 혼자 끝낸 범위를 따로 적어 다음 순서를 정합니다."
+        )
+    if "학기 말" in focus or "학기말" in focus:
+        return (
+            f"‘{focus}’은 학기 초 계획을 되풀이하는 뜻이 아닙니다. 학기 동안 남긴 영어 자료에서 반복해 막힌 기능 하나를 고르고, 현재 단원에서 다시 해 본 기록과 학기 말 재확인 결과를 나누어 적으세요. "
+            "방학이나 다음 학기 계획은 실제 일정이 확인된 뒤 남은 어려움에 맞춰 정합니다."
+        )
+    if "학기" in focus or "개학" in focus:
+        return (
+            f"‘{focus}’은 학교의 실제 일정과 현재 단원을 먼저 확인합니다. 학기 시작 주의 자료·현재 단원 활동·일주일 뒤 다시 본 결과를 각각 다른 줄에 적고, 학교 진도가 바뀌면 계획도 함께 조정하세요."
+        )
+    if "선행" in focus:
+        return (
+            f"‘{focus}’은 진도만 앞당기는 뜻이 아닙니다. 현재 영어 자료에서 ‘{primary.evidence}’를 표시하고 ‘{primary.action}’을 도움 없이 해 본 뒤, "
+            "그 과정을 설명하고 한 단계 더 긴 예시 하나만 미리 봅니다. 도움이 필요하면 현재 단계의 빈 부분부터 다시 확인합니다."
+        )
+    if "집중 기간" in focus or "집중해서 준비" in focus or "집중 영역" in focus:
+        return (
+            f"‘{focus}’은 학교의 실제 일정과 현재 단원을 먼저 적고, 그 기간에 우선 확인할 영어 영역 하나를 고르는 과정입니다. 학교 활동과 평소 기초 연습의 날짜·최소 분량을 다른 줄에 두고, "
+            "각 활동을 끝낸 범위와 도움받은 지점을 비교해 다음 주의 우선순위를 조정하세요."
+        )
+    if "집중력" in focus or "집중 상태" in focus or "집중 흐름" in focus or "집중 습관" in focus:
+        return (
+            f"‘{focus}’을 앉아 있던 시간만으로 판단하지 마세요. 시작 시각, 멈춘 지점, 도움 뒤 다시 시작한 위치와 끝낸 범위를 적고, 같은 길이의 활동에서 시작과 마무리가 이어지는지 재확인하세요."
+        )
+    if "학습 성향" in focus or "아이의 성향" in focus:
+        return (
+            f"‘{focus}’은 성격을 단정하는 표현이 아닙니다. 아이가 먼저 고른 활동, 스스로 시작하고 이어 간 범위, 도움을 요청한 지점과 설명 뒤 다시 한 부분을 각각 기록하세요. "
+            "읽기·말하기·쓰기 중 관찰된 행동이 안정적으로 이어진 영역부터 다음 학습 순서에 배치합니다."
+        )
+    if "발표" in focus:
+        return (
+            f"‘{focus}’은 긴 발표를 바로 요구하지 않습니다. 그림이나 짧은 글에서 핵심 낱말을 고르고, 말할 순서를 정해 한두 문장으로 연습한 뒤 듣는 사람 앞에서 다시 말하게 하세요. "
+            "도움받은 표현과 혼자 이어 말한 범위, 발표 뒤 스스로 고친 부분을 나누어 기록합니다."
+        )
+    if "참여" in focus:
+        return (
+            f"‘{focus}’은 손을 든 횟수 하나보다 활동을 먼저 시작했는지, 막힌 곳을 질문했는지, 설명 뒤 다시 해 봤는지로 나누어 기록하세요. 다음 활동에서도 세 행동 중 무엇이 이어졌는지 확인합니다."
+        )
+    if "흥미" in focus or "재미" in focus or "동기" in focus:
+        return (
+            f"‘{focus}’은 재미를 보장하는 표현이 아닙니다. 두 가지 짧은 활동 중 아이가 고른 것, 실제 시작·완료 여부와 다시 하고 싶은 이유를 기록하고, 다음 주에도 같은 선택이 이어지는지 직접 물어보세요."
+        )
+    if "부담" in focus or "갈등" in focus or "거부" in focus:
+        return (
+            f"‘{focus}’은 감정의 변화를 단정하지 않습니다. 시작 전 머뭇거린 지점, 끝낸 최소 분량과 도움을 요청한 순간을 적고, 분량을 줄인 다음 활동에서 시작 행동과 완료 여부가 달라졌는지 확인하세요."
+        )
+    if "입학" in focus or "중학생" in focus or "중학교" in focus or "중등" in focus or "다음 학년" in focus:
+        return (
+            f"‘{focus}’에서는 중학생이 된 뒤의 학습 범위·교재를 미리 단정하지 않습니다. "
+            "현재 초등 자료의 도움 여부와 한 단계 긴 활동의 완료 범위를 적고, 입학 뒤 실제 진도·일정에 맞춰 계획하세요."
+        )
+    return (
+        f"‘{focus}’은 결과를 약속하는 문구가 아니라 현재 기록과 다음 행동을 잇는 점검 주제입니다. {primary.label}과 {secondary.label}의 자료 위치를 나누고, 이번 주 한 행동과 재확인 결과를 같은 형식으로 남기세요."
+    )
+
+
+def compact_elementary_english_heading(
+    section_key: str,
+    profile: ElementaryEnglishProfile,
+    locality: str,
+    seed: str,
+) -> str:
+    """Create a readable fallback only when a generated H2 exceeds 50 chars."""
+
+    primary, secondary = profile.intents[:2]
+    join = particle_for(primary.label, "과", "와")
+    if section_key == "direct-answer":
+        compact_focus = profile.focus.replace("초등 영어", "영어")
+        candidates = (
+            f"{locality} 초등 영어: {profile.focus}",
+            f"{locality} 영어: {compact_focus}",
+            f"{locality} 초등 영어: {primary.label}{join} {secondary.label} 확인",
+        )
+        for candidate in candidates:
+            candidate = naturalize_elementary_english_text(candidate, profile)
+            if len(candidate) <= 50:
+                return candidate
+    options = {
+        "direct-answer": (
+            f"{locality} {primary.label}에서 시작하는 초등 영어 점검",
+            f"{locality} 초등 영어: {primary.label}{join} {secondary.label} 첫 확인",
+        ),
+        "diagnostic-evidence": (
+            f"{primary.label}{join} {secondary.label} 기록을 고르는 기준",
+            f"{locality} 영어 자료에서 막힌 위치를 찾는 방법",
+        ),
+        "exam-strategy": (
+            f"{primary.label}{join} {secondary.label}: 자료별 확인일 나누기",
+            f"{primary.label}{join} {secondary.label}: 활동일·재확인일 나누기",
+        ),
+        "school-center-facts": (
+            f"{locality} 학교·학년 정보와 {primary.label} 항목",
+            f"{locality} 센터 사실과 영어 학습 질문의 구분",
+        ),
+        "four-week-plan": (
+            f"{primary.label}{join} {secondary.label} 관련 활동·점검 계획",
+            f"{locality} 초등 영어의 7일 기록과 다음 행동",
+        ),
+        "consultation-checklist": (
+            f"{locality} 상담 전 영어 자료와 이용 조건 확인",
+            f"{primary.label} 상담 항목과 센터 정보 확인 순서",
+        ),
+    }
+    heading = stable_pick(
+        seed,
+        f"elementary-compact-heading-{section_key}",
+        options.get(section_key, (f"{locality} 초등 영어 확인 기준",)),
+    )
+    heading = naturalize_elementary_english_text(heading, profile)
+    return heading if len(heading) <= 50 else f"{locality} 초등 영어 확인 기준"
+
+
+def elementary_english_meta_description(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryEnglishProfile,
+) -> str:
+    title = f"{center['locality']} {config.label}"
+    primary, secondary = profile.intents[:2]
+    focus_meta = profile.focus
+    primary_meta_label = primary.label
+    if profile.focus.rstrip().endswith("학습") and primary.label.startswith("학습"):
+        focus_meta = re.sub(r"학습\s*$", "과정", profile.focus)
+    elif profile.focus.rstrip().endswith("질문") and primary.label.startswith("질문"):
+        focus_meta = re.sub(r"(?:와|과)\s*질문\s*$", "", profile.focus).rstrip()
+        if focus_meta == profile.focus:
+            focus_meta = re.sub(r"질문\s*$", "확인 항목", profile.focus)
+    intent_pair = (
+        f"{primary_meta_label}"
+        f"{particle_for(primary_meta_label, '과', '와')} {secondary.label}"
+    )
+    candidates = (
+        f"{title} 선택 전 {focus_meta}, {intent_pair}의 현재선, 학교 영어와 가정 복습 순서를 확인하세요.",
+        f"{title}에서 {intent_pair}을 확인하는 자료, 아이의 첫 행동과 재확인 기준, 센터·가능 학년 정보를 안내합니다.",
+        f"{title} 상담 전 아이의 {intent_pair} 기록, 초등 영어 학습 순서와 확인된 센터·학년 정보를 살펴보세요.",
+        f"{title}의 {profile.focus}. 아이가 읽고 설명한 기록부터 가정 복습, 학교 영어, 센터·가능 학년 확인 기준까지 정리했습니다.",
+    )
+    for candidate in candidates:
+        candidate = naturalize_elementary_english_text(clean(candidate), profile)
+        if 70 <= len(candidate) <= 100:
+            return candidate
+    raise ValueError(
+        f"elementary English meta description invalid: {title} / {profile.focus}"
+    )
+
+
+def elementary_english_student_type(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> str:
+    locality = str(center["locality"])
+    primary, secondary = profile.intents[:2]
+    primary_result = elementary_english_recheck_result(primary)
+    return stable_pick(seed, "elementary-student", [
+        f"{locality}에서 {primary.label}과 {secondary.label} 중 먼저 도울 영역을 아이의 교재와 설명으로 구분해야 하는 초등학생",
+        f"진도보다 {primary.label} 기록과 {secondary.label} 관련 활동 과정을 살펴 가정 복습의 순서를 정해야 하는 {locality} 초등학생",
+        f"영어가 어렵다는 말만으로 교재를 바꾸지 않고 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}{particle_for(secondary.label, '을', '를')} 확인할 자료에서 막힌 위치를 찾아야 하는 {locality} 초등학생",
+        f"{locality}에서 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}{particle_for(secondary.label, '을', '를')} 확인한 뒤 아이가 멈춘 위치와 다음 행동을 영역별로 나누어 볼 초등학생",
+        f"부모의 도움 뒤 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}{particle_for(secondary.label, '을', '를')} 확인하는 활동에서 아이가 혼자 해 낸 부분과 도움받은 부분을 다시 살펴야 하는 {locality} 초등학생",
+        f"영어 분량을 무작정 늘리기보다 ‘{primary.action}’{particle_for(primary.action, '을', '를')} 실행할 날짜와 ‘{primary_result}’{particle_for(primary_result, '을', '를')} 살필 날짜가 필요한 {locality} 초등학생",
+    ])
+
+
+def elementary_english_quick_answer(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> str:
+    locality = str(center["locality"])
+    skill_phrase = elementary_english_skill_phrase(profile)
+    evidence, action, checkpoint = elementary_english_focus_guidance(
+        profile, locality, seed
+    )
+    opening = stable_pick(seed, "elementary-quick-open-v2", (
+        f"{locality} 초등 영어에서는 ‘{profile.focus}’을 아이의 자료를 기준으로 살펴봅니다.",
+        f"{locality}의 ‘{profile.focus}’은 진도보다 아이가 실제로 수행한 흔적과 설명 기록에서 판단합니다.",
+        f"‘{profile.focus}’을 고민하는 {locality} 학부모라면 현재선과 다음 행동을 나누어 보세요.",
+        f"{locality} 상담을 준비할 때는 ‘{profile.focus}’을 자료·행동·재확인의 흐름에 따라 정리하세요.",
+    ))
+    answer = naturalize_elementary_english_text(
+        f"{opening} 확인 자료: {skill_phrase} 기록을 먼저 봅니다. {evidence}. 이번 주 행동: {action}. 재확인 기준: {checkpoint}.",
+        profile,
+    )
+    if len(answer) > 340:
+        answer = naturalize_elementary_english_text(
+            f"{locality}: ‘{profile.focus}’을 아이 자료로 확인합니다. "
+            f"확인 자료: {skill_phrase} 기록부터 봅니다. {evidence}. "
+            f"이번 주 행동: {action}. 재확인 기준: {checkpoint}.",
+            profile,
+        )
+    if len(answer) > 350:
+        answer = naturalize_elementary_english_text(
+            f"{locality}에서는 ‘{profile.focus}’{particle_for(profile.focus, '을', '를')} 아이의 학습 기록으로 살펴봅니다. "
+            f"확인 자료: {evidence}. 이번 주 행동: {action}. "
+            f"재확인 기준: {checkpoint}.",
+            profile,
+        )
+    return answer
+
+
+def elementary_english_sections(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> list[dict[str, object]]:
+    """Reuse the high-variation English engine, then apply elementary framing."""
+
+    sections = naturalize_elementary_english_tree(
+        high_english_sections(config, center, profile, seed),  # type: ignore[arg-type]
+        profile,
+    )
+    locality = str(center["locality"])
+    primary, secondary, support, extra = profile.intents
+    focus_references = {
+        "direct-answer": f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}의 현재선",
+        "diagnostic-evidence": f"아이의 {primary.label} 기록",
+        "exam-strategy": f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label} 자료의 확인 순서",
+        "school-center-facts": f"{locality} 초등 영어 확인",
+        "four-week-plan": f"{secondary.label} 주간 계획",
+        "consultation-checklist": f"{primary.label}{particle_for(primary.label, '을', '를')} 확인할 자료에서 막힌 지점",
+    }
+    for section in sections:
+        replacement = focus_references.get(
+            str(section["key"]), f"{primary.label} 학습 기록"
+        )
+        section["heading"] = replace_elementary_english_focus(
+            section["heading"], profile.focus, replacement
+        )
+        section["paragraphs"] = replace_elementary_english_focus(
+            section["paragraphs"], profile.focus, replacement
+        )
+        if section.get("checklist"):
+            section["checklist"] = replace_elementary_english_focus(
+                section["checklist"], profile.focus, replacement
+            )
+    direct_workflow = elementary_english_workflow(
+        profile, locality, seed, "direct"
+    )
+    plan_workflow = elementary_english_workflow(
+        profile, locality, seed, "plan"
+    )
+    fact_headings = (
+        f"{locality} 참고 학교·학년 사실과 {primary.label} 항목 구분",
+        f"{locality} 센터·학년·주소와 {secondary.label} 항목 분리",
+        f"{locality} 참고 학교·시간표와 {primary.label} 상담 항목 구분",
+        f"{locality} 학교·가능 학년 사실과 {secondary.label} 자료 대조",
+        f"{locality} 학교·학년 정보와 {primary.label} 항목 대조",
+        f"{locality} 이용 조건과 {secondary.label} 상담 항목 분리",
+        f"{locality} 학년·개설 정보와 {primary.label} 항목 구분",
+        f"{locality} 센터 사실과 {secondary.label} 항목 대조",
+        f"{locality} 참고 학교·가능 학년과 {primary.label} 자료 구분",
+        f"{locality} 센터 정보와 {secondary.label} 항목 분리",
+        f"{locality} 학교·학년·센터 사실과 {primary.label} 상담 항목 구분",
+        f"{locality} 이용 조건과 {secondary.label} 항목 구분",
+        f"{locality} 학교·학년·시간표와 {primary.label} 자료 비교",
+        f"{locality} 학교·학년·주소 사실과 {secondary.label} 자료 구분",
+    )
+    for section in sections:
+        key = str(section["key"])
+        if key == "direct-answer":
+            if "초등 영어" in profile.focus or profile.focus.startswith("영어"):
+                heading_prefix = locality
+            else:
+                heading_prefix = f"{locality} 초등 영어"
+            section["heading"] = f"{heading_prefix}: {profile.focus}"
+            focus_support = elementary_english_focus_support(profile, locality)
+            section["paragraphs"][-1] = clean(
+                f"{focus_support or section['paragraphs'][-1]} {direct_workflow}"
+            )
+        elif key == "four-week-plan":
+            section["paragraphs"][-1] = clean(
+                f"{section['paragraphs'][-1]} {plan_workflow}"
+            )
+        elif key == "exam-strategy":
+            section["heading"] = (
+                f"학교 단원 확인일과 {primary.label}·{secondary.label} "
+                "재확인일을 나누는 기준"
+            )
+            section["paragraphs"][0] = elementary_english_school_reading_context(
+                profile, locality, seed
+            )
+            if len(section["paragraphs"]) > 2:
+                section["paragraphs"][1] = elementary_english_school_reading_step(
+                    profile, locality, seed
+                )
+            section["paragraphs"][-1] = elementary_english_exam_note(
+                profile, locality, seed
+            )
+        elif key == "diagnostic-evidence":
+            section["paragraphs"][-1] = elementary_english_diagnostic_note(
+                profile, locality, seed
+            )
+            if locality == "관평동":
+                section["paragraphs"][-1] = (
+                    "같은 길이의 새 글을 두 번 읽고 처음 멈춘 문장과 다시 이어 읽은 위치를 날짜별로 표시하세요. "
+                    "일주일 뒤에는 도움 없이 뜻을 설명한 문장이 늘었는지 확인합니다."
+                )
+            elif locality == "운정":
+                section["paragraphs"][-1] = (
+                    "월요일 계획표의 읽을 문장과 금요일 완료 기록을 나란히 두세요. "
+                    "시작만 하고 끝내지 못한 날은 원인을 한 줄로 적고 다음 주에는 분량을 줄여 다시 확인합니다."
+                )
+            elif locality == "동삭동":
+                section["paragraphs"][-1] = (
+                    "동삭동 기록에서는 교재 쪽수보다 아이가 도움을 청한 순간을 먼저 표시하세요. "
+                    "같은 기능의 새 문장을 읽힌 뒤 처음부터 혼자 이어 간 구간과 다시 질문한 낱말을 나누어 다음 복습 범위를 정합니다."
+                )
+            elif locality == "양평동":
+                section["paragraphs"][-1] = (
+                    "양평동 기록표에는 학교 교재에서 설명이 멈춘 쪽수, 집에서 처음 읽은 글의 문장 번호, "
+                    "아이가 스스로 다시 시작한 시각을 세 줄로 나눠 적으세요. 목요일에는 두 자료 중 같은 기능에서 "
+                    "다시 막힌 흔적만 동그라미 치고, 다음 주 첫 활동은 그 한 항목으로 제한합니다."
+                )
+            elif locality == "범어동":
+                section["paragraphs"][-1] = (
+                    "범어동 기록표에는 월요일 첫 읽기에서 뜻을 짚지 못한 문장, 고친 낱말 순서와 스스로 "
+                    "다시 시작한 시각을 나누어 적으세요. 목요일에는 길이가 비슷한 다른 문장에서 설명이 "
+                    "이어진 구간과 과제 시작·완료 시각을 비교합니다. 문장 이해가 나아져도 계획을 반복해 "
+                    "미뤘다면 두 영역을 함께 완료한 것으로 표시하지 않습니다."
+                )
+            elif locality == "미사신도시":
+                section["paragraphs"][-1] = (
+                    "미사신도시 기록에는 활동 시작 전 머뭇거린 시각, 부모가 도운 첫 지점과 도움 없이 "
+                    "다시 읽은 문장을 세 칸에 적으세요. 화요일에는 읽을 분량을 절반으로 줄이고, 금요일에는 "
+                    "같은 길이로 돌아가 시작 시각과 설명이 이어진 구간을 비교합니다. 분량을 줄였는데도 "
+                    "같은 문장에서 멈췄다면 부담과 문장 이해를 다른 원인으로 기록하세요."
+                )
+        elif key == "school-center-facts":
+            section["heading"] = stable_pick(
+                seed, "elementary-fact-heading-v2", fact_headings
+            )
+            section["paragraphs"][-1] = elementary_english_grade_center_paragraph(
+                config, center, profile, seed
+            )
+        elif key == "consultation-checklist":
+            section["paragraphs"][1] = stable_pick(
+                seed,
+                "elementary-consult-p2-linked-v1",
+                (
+                    f"상담 답변에는 ‘{primary.action}’{particle_for(primary.action, '을', '를')} 실행할 날짜와 ‘{primary.checkpoint}’{particle_for(primary.checkpoint, '을', '를')} 확인할 날짜를 적으세요. 주소·학년·시간표·교습비는 학습 질문과 다른 줄에 남깁니다.",
+                    f"상담 메모에는 ‘{primary.action}’을 실행할 날짜와 ‘{primary.checkpoint}’를 같은 영역의 자료로 다시 볼 날짜가 남아야 합니다. 센터 이용 조건은 별도 목록으로 구분하세요.",
+                    f"설명을 들은 뒤 ‘{primary.action}’과 재확인 기준인 ‘{primary.checkpoint}’를 한 줄씩 적습니다. 학습 계획과 등록 조건을 섞지 않아야 비교하기 쉽습니다.",
+                    f"답변이 ‘{primary.action}’의 실행 계획과 ‘{primary.checkpoint}’{particle_for(primary.checkpoint, '을', '를')} 다시 확인할 날짜로 이어지는지 확인하세요. 운영 정보는 확인된 사실만 따로 기록합니다.",
+                    f"마지막에는 ‘{primary.action}’을 누가 언제 실행하는지, ‘{primary.checkpoint}’를 어떤 자료로 다시 볼지 적습니다. 시간표·교습비·통학은 별도 조건입니다.",
+                    f"상담 뒤 학생이 ‘{primary.action}’을 어떻게 해 볼지 말하게 하세요. ‘{primary.checkpoint}’를 살필 날짜와 센터 이용 조건은 서로 다른 칸에 적습니다.",
+                ),
+            )
+            checklist = list(section.get("checklist", []))
+            if checklist:
+                checklist[0] = (
+                    "아이 자료",
+                    f"{primary.label}{particle_for(primary.label, '을', '를')} 확인할 자료 위치와 아이가 도움 뒤 다시 한 흔적",
+                )
+                checklist[1] = (
+                    "학습 일정",
+                    f"실행 날짜: ‘{secondary.action}’ / 재확인 날짜: ‘{secondary.checkpoint}’",
+                )
+                checklist[2] = (
+                    "재확인",
+                    f"{primary.label} 기록을 다시 볼 날짜와 그날 비교할 {elementary_english_recheck_result(primary)}",
+                )
+                section["checklist"] = checklist
+    normalized_sections = naturalize_elementary_english_tree(
+        sections, profile
+    )  # type: ignore[assignment]
+    for section in normalized_sections:
+        if str(section["key"]) == "exam-strategy":
+            join = particle_for(primary.label, "과", "와")
+            pair = f"{primary.label}{join} {secondary.label}"
+            pair_object = particle_for(secondary.label, "을", "를")
+            section["heading"] = stable_pick(
+                seed,
+                "elementary-exam-heading-final-v3",
+                (
+                    f"{pair}: 학교 일정과 자료별 재확인일을 나누는 기준",
+                    f"{pair}: 두 학습 자료의 확인 날짜를 구분하는 법",
+                    f"{pair}: 학교 일정에 맞춰 두 자료를 확인하는 순서",
+                    f"{pair}: 활동일과 재확인일을 구분하는 방법",
+                    f"{pair}: 학교 일정과 다음 확인 날짜를 정하는 기준",
+                    f"{pair}: 두 학습 자료를 날짜별로 확인하는 순서",
+                ),
+            )
+        heading = str(section["heading"])
+        if len(heading) > 50:
+            section["heading"] = compact_elementary_english_heading(
+                str(section["key"]), profile, locality, seed
+            )
+    normalized_sections = elementary_english_adapt_material_tree(
+        normalized_sections, profile
+    )
+    return normalized_sections  # type: ignore[return-value]
+
+
+def elementary_english_faq(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> list[tuple[str, str]]:
+    faq = naturalize_elementary_english_tree(
+        high_english_faq(config, center, profile, seed),  # type: ignore[arg-type]
+        profile,
+    )
+    replacements = (
+        f"{profile.intents[0].label}의 현재선 확인",
+        f"{profile.intents[1].label}의 실행 기록",
+        f"{profile.intents[2].label}의 자료 확인",
+        f"{profile.intents[3].label}의 다음 행동",
+        f"{profile.intents[0].label}의 재확인 기준",
+    )
+    result = [
+        replace_elementary_english_focus(item, profile.focus, replacements[index])
+        for index, item in enumerate(faq)
+    ]
+    # The second FAQ is always the distinction question.  Give it a complete,
+    # evidence-led answer instead of collapsing one high-school variation into
+    # a corpus-wide stock sentence during naturalization.
+    question, _answer = result[1]
+    result[1] = (
+        question,
+        naturalize_elementary_english_text(
+            elementary_english_distinction_answer(profile, seed), profile
+        ),
+    )
+    # The third FAQ follows the page's actual lead materials.  A fixed
+    # school-vs-reading question leaks reading language into routine, grammar,
+    # speaking and other non-reading pages.
+    primary, secondary = profile.intents[:2]
+    result[2] = elementary_english_material_contrast_faq(profile, seed)
+    support, extra = profile.intents[2:4]
+    faq_material_profile = ElementaryEnglishProfile(
+        focus=profile.focus,
+        source_title=profile.source_title,
+        intents=(support, extra, primary, secondary),
+        source_markers=profile.source_markers,
+    )
+    result[3] = elementary_english_adapt_material_tree(
+        result[3], faq_material_profile
+    )
+    result = [
+        item
+        if index == 3
+        else elementary_english_adapt_material_tree(item, profile)
+        for index, item in enumerate(result)
+    ]
+    return result  # type: ignore[return-value]
+
+
+def elementary_english_scenarios(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryEnglishProfile,
+    seed: str,
+) -> list[str]:
+    scenarios = naturalize_elementary_english_tree(
+        high_english_scenarios(config, center, profile, seed),  # type: ignore[arg-type]
+        profile,
+    )
+    primary = profile.intents[0]
+    replacements = (
+        f"아이의 {primary.label} 기록",
+        f"{profile.intents[1].label} 활동의 다음 확인",
+    )
+    result = [
+        replace_elementary_english_focus(item, profile.focus, replacements[index])
+        for index, item in enumerate(scenarios)
+    ]
+    result = [
+        value.replace(
+            f"‘아이의 {primary.label} 기록’에 필요한 {primary.label} 자료",
+            f"{primary.label}의 현재선을 확인할 자료",
+        )
+        for value in result
+    ]
+    secondary = profile.intents[1]
+    result = [
+        value.replace(
+            f"{primary.label} 확인 항목과 {secondary.label} 기록",
+            f"{primary.label} 관련 활동에서 막힌 지점과 {secondary.label}의 확인 기록",
+        )
+        for value in result
+    ]
+    result = [
+        value.replace(
+            f"‘{primary.action}’{particle_for(primary.action, '을', '를')} 해 보고, 학부모는 ‘{secondary.checkpoint}’",
+            f"‘{primary.action}’{particle_for(primary.action, '을', '를')} 해 보고, 학부모는 ‘{primary.checkpoint}’",
+        )
+        for value in result
+    ]
+    if not relevant_schools(config, center):
+        locality = re.escape(str(center["locality"]))
+        result = [
+            re.sub(
+                rf"(?:{locality}의|페이지의) 참고 학교와 실제 재학 학교가 다른 경우를 가정했습니다\.",
+                f"{center['locality']} 페이지에 참고 학교명이 없는 경우를 가정했습니다.",
+                value,
+            )
+            for value in result
+        ]
+    result = elementary_english_adapt_material_tree(result, profile)
+    result = [
+        value.replace(
+            "학교 영어와 처음 보는 글 읽기 일정",
+            "학교 일정과 평소 학습 일정",
+        )
+        for value in result
+    ]
+    return result  # type: ignore[return-value]
 
 
 def middle_english_particle_tokens(profile: MiddleEnglishProfile) -> tuple[str, ...]:
@@ -4924,6 +8328,298 @@ def build_scenarios(config: CategoryConfig, center: dict[str, object], signals: 
     return [first, second]
 
 
+# Elementary mathematics uses the already audited elementary answer-first
+# architecture.  The prose skeleton is shared, but every learning signal,
+# source focus, artifact, action and recheck remains mathematics-specific.
+# Keeping this adapter after the English definitions means these functions are
+# the final runtime implementations used by ``build_records``.
+def _elementary_math_proxy_profile(
+    profile: ElementaryMathProfile,
+) -> ElementaryEnglishProfile:
+    return ElementaryEnglishProfile(
+        focus=profile.focus,
+        source_title=profile.source_title,
+        intents=profile.intents,  # type: ignore[arg-type]
+        source_markers=profile.source_markers,
+    )
+
+
+def elementary_math_intent_material(intent: HighMathIntent) -> str:
+    return {
+        "diagnosis": "현재 교재에서 설명이 멈춘 문제·다시 푼 기록",
+        "number": "자릿값·받아올림 표시와 스스로 고친 계산",
+        "calculation": "중간 계산·오류 위치·검산 표시",
+        "word_problem": "조건 밑줄·그림·처음 세운 식",
+        "fraction": "분수·소수의 그림·수직선·식 기록",
+        "geometry": "도형 조건·길이·각도·단위 표시",
+        "concept": "개념 설명 메모·대표 문제의 선택 이유",
+        "error": "첫 풀이·오류 원인·며칠 뒤 재풀이",
+        "written": "조건·식·단위가 보이는 풀이 초안·수정안",
+        "school": "학교 진도표·교과서·현재 교재",
+        "routine": "주간 계획·시작·완료·질문 기록",
+        "independence": "도움 요청 위치·혼자 다시 푼 기록",
+        "pace": "문제별 소요 시간·건너뛴 순서·검산 표시",
+        "transition": "초등 교재의 완료 범위·중1 예시 문제의 첫 막힘",
+    }.get(intent.code, "현재 교재·풀이 기록")
+
+
+def elementary_math_recheck_result(intent: HighMathIntent) -> str:
+    return {
+        "diagnosis": "연산·개념·문장제 중 혼자 시작하고 설명한 범위",
+        "number": "수가 달라도 원리를 설명하며 계산한 범위",
+        "calculation": "새 계산에서 오류가 줄고 스스로 검산한 지점",
+        "word_problem": "새 문장제에서 조건을 골라 식을 세운 범위",
+        "fraction": "표현이 달라도 전체·부분 관계를 설명한 범위",
+        "geometry": "새 도형에서 성질과 단위를 골라 설명한 범위",
+        "concept": "새 문제에서 개념을 고르고 사용 이유를 설명한 범위",
+        "error": "같은 실수가 줄고 새 문제를 다시 푼 지점",
+        "written": "조건·식·단위를 빠뜨리지 않고 풀이를 설명한 범위",
+        "school": "학교 단원 내용을 설명하고 새 문제에 적용한 범위",
+        "routine": "완료 여부·미완료 이유·조정한 분량",
+        "independence": "도움을 요청한 지점과 혼자 다시 한 범위",
+        "pace": "정한 시간 안에 풀이와 검산을 마친 범위",
+        "transition": "길어진 조건을 읽고 첫 식을 스스로 세운 범위",
+    }.get(intent.code, "새 문제에서 풀이 이유를 설명한 범위")
+
+
+def elementary_math_focus_support(
+    profile: ElementaryMathProfile,
+    locality: str,
+) -> str:
+    primary, secondary = profile.intents[:2]
+    primary_material = elementary_math_intent_material(primary)
+    secondary_material = elementary_math_intent_material(secondary)
+    return (
+        f"‘{profile.focus}’은 운영 방식이나 결과를 미리 단정하는 문구가 아니라 확인할 학습 주제입니다. "
+        f"{primary_material}{particle_for(primary_material, '과', '와')} {secondary_material}을 다른 줄에 두고, "
+        f"‘{primary.action}’ 뒤 ‘{primary.checkpoint}’를 첫 기록과 대조하세요."
+    )
+
+
+def elementary_math_with_english_helpers(builder: object, *args: object) -> object:
+    """Run the proven elementary structure with mathematics-only helper text."""
+
+    helper_names = (
+        "elementary_english_intent_material",
+        "elementary_english_recheck_result",
+    )
+    replacements = (
+        elementary_math_intent_material,
+        elementary_math_recheck_result,
+    )
+    previous = {name: globals()[name] for name in helper_names}
+    try:
+        for name, replacement in zip(helper_names, replacements):
+            globals()[name] = replacement
+        return builder(*args)  # type: ignore[operator]
+    finally:
+        globals().update(previous)
+
+
+def elementary_math_proxy_center(center: dict[str, object]) -> dict[str, object]:
+    proxy = dict(center)
+    grades = dict(center["grades"])  # type: ignore[arg-type]
+    grades["영어"] = list(grades.get("수학", []))
+    proxy["grades"] = grades
+    return proxy
+
+
+def elementary_math_skill_phrase(profile: ElementaryMathProfile) -> str:
+    return {
+        "diagnosis": "연산·개념·문장제",
+        "number": "수 감각·연산 원리",
+        "calculation": "계산 과정·검산",
+        "word_problem": "조건 읽기·식 세우기",
+        "fraction": "분수·소수·수직선",
+        "geometry": "도형·측정·단위",
+        "concept": "개념 설명·대표 문제",
+        "error": "오답 원인·새 문제",
+        "written": "조건·식·풀이 과정",
+        "school": "학교 단원·단원평가",
+        "routine": "과제·복습·완료 기록",
+        "independence": "질문·혼자 설명",
+        "pace": "풀이 시간·검산",
+        "transition": "초등 기초·한 단계 긴 문제",
+    }.get(profile.intents[0].code, "개념·계산·문장제")
+
+
+def elementary_math_from_english_text(
+    value: str,
+    profile: ElementaryMathProfile,
+) -> str:
+    skill = elementary_math_skill_phrase(profile)
+    replacements = (
+        ("단어·문제 읽기·풀이 기록", "개념·문제 읽기·풀이 기록"),
+        ("문제일과 재확인일", "실행일과 재확인일"),
+        ("문제일", "실행일"),
+        ("듣기·읽기·문장 쓰기", skill),
+        ("어휘·문장 읽기·짧은 쓰기", skill),
+        ("어휘·문장 읽기·쓰기", skill),
+        ("어휘·문장·내용 이해", "연산·개념·문장제"),
+        ("낱말·문장·내용 이해", "연산·개념·문장제"),
+        ("짧은 읽기·말하기 활동", "짧은 계산·풀이 설명 활동"),
+        ("짧은 학교 단원 활동", "짧은 학교 단원 문제"),
+        ("영어 한 문장", "수학 풀이 한 단계"),
+        ("영어 문장", "수학 풀이"),
+        ("문장 초안과 수정안", "첫 풀이와 수정 풀이"),
+        ("초안과 수정안", "첫 풀이와 수정 풀이"),
+        ("문장 쓰기", "풀이 기록"),
+        ("짧은 쓰기", "짧은 풀이 기록"),
+        ("문장 읽기", "문제 읽기"),
+        ("새 글", "새 문제"),
+        ("짧은 글", "짧은 문제"),
+        ("읽기 활동", "풀이 활동"),
+        ("영어 활동", "수학 문제"),
+        ("영어 자료", "수학 자료"),
+        ("영어 분량", "수학 분량"),
+        ("영어 가능 학년", "수학 가능 학년"),
+        ("영어 학년 정보", "수학 학년 정보"),
+        ("학교 영어", "학교 수학"),
+        ("초등 영어학원", "초등 수학학원"),
+        ("초등 영어", "초등 수학"),
+        ("영어가 어렵다는 말", "수학이 어렵다는 말"),
+        ("영어 학습", "수학 학습"),
+        ("영어", "수학"),
+        ("낱말", "수학 표현"),
+        ("어휘", "기초 개념"),
+        ("문법", "계산 원리"),
+        ("독해", "문장제 풀이"),
+        ("음원", "문제 자료"),
+        ("발음", "풀이 설명"),
+        ("말하기", "풀이 설명"),
+        ("읽기", "문제 읽기"),
+        ("쓰기", "풀이 기록"),
+        ("새 활동", "새 문제"),
+        ("같은 활동", "같은 유형의 문제"),
+        ("활동", "문제"),
+        ("보존하세요", "지우지 말고 남겨 두세요"),
+        ("보존합니다", "지우지 않고 남깁니다"),
+        ("점수 향상", "학습 변화"),
+        ("성적 향상", "학습 변화"),
+        ("성과를 보장", "결과를 약속"),
+        ("보장하지", "뜻하지"),
+        ("보장하는", "뜻하는"),
+    )
+    for before, after in replacements:
+        value = value.replace(before, after)
+    repairs = (
+        ("단어·문제 읽기·풀이 기록", "개념·문제 읽기·풀이 기록"),
+        ("문제일과 재확인일", "실행일과 재확인일"),
+        ("문제일", "실행일"),
+        ("문제 문제 읽기", "문제 읽기"),
+        ("수학 수학", "수학"),
+        ("풀이 풀이", "풀이"),
+        ("풀이 기록 기록", "풀이 기록"),
+        ("조건 조건 해석", "조건 해석"),
+        ("문제 문제", "문제"),
+        ("같은 유형의 문제에서 막힌 문장", "같은 유형에서 막힌 문제"),
+        ("문장 뜻", "조건의 뜻"),
+        ("문장 순서", "풀이 순서"),
+        ("문제을", "문제를"),
+        ("문제이", "문제가"),
+    )
+    for before, after in repairs:
+        value = value.replace(before, after)
+    value = value.replace(
+        "단어·문제 읽기·풀이 기록",
+        "개념·문제 읽기·풀이 기록",
+    )
+    value = value.replace("며칠 뒤에는 ‘일주일 뒤", "재확인일에는 ‘일주일 뒤")
+    return naturalize_elementary_math_text(value, profile)
+
+
+def elementary_math_from_english_tree(
+    value: object,
+    profile: ElementaryMathProfile,
+) -> object:
+    if isinstance(value, str):
+        return elementary_math_from_english_text(value, profile)
+    if isinstance(value, list):
+        return [elementary_math_from_english_tree(item, profile) for item in value]
+    if isinstance(value, tuple):
+        return tuple(elementary_math_from_english_tree(item, profile) for item in value)
+    if isinstance(value, dict):
+        return {key: elementary_math_from_english_tree(item, profile) for key, item in value.items()}
+    return value
+
+
+def elementary_math_meta_description(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+) -> str:
+    value = elementary_math_with_english_helpers(
+        elementary_english_meta_description,
+        config, elementary_math_proxy_center(center), _elementary_math_proxy_profile(profile),
+    )
+    return elementary_math_from_english_text(value, profile)
+
+
+def elementary_math_student_type(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> str:
+    value = elementary_math_with_english_helpers(
+        elementary_english_student_type,
+        config, elementary_math_proxy_center(center), _elementary_math_proxy_profile(profile), seed,
+    )
+    return elementary_math_from_english_text(value, profile)
+
+
+def elementary_math_quick_answer(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> str:
+    value = elementary_math_with_english_helpers(
+        elementary_english_quick_answer,
+        config, elementary_math_proxy_center(center), _elementary_math_proxy_profile(profile), seed,
+    )
+    return elementary_math_from_english_text(value, profile)
+
+
+def elementary_math_sections(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> list[dict[str, object]]:
+    value = elementary_math_with_english_helpers(
+        elementary_english_sections,
+        config, elementary_math_proxy_center(center), _elementary_math_proxy_profile(profile), seed,
+    )
+    return elementary_math_from_english_tree(value, profile)  # type: ignore[return-value]
+
+
+def elementary_math_faq(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> list[tuple[str, str]]:
+    value = elementary_math_with_english_helpers(
+        elementary_english_faq,
+        config, elementary_math_proxy_center(center), _elementary_math_proxy_profile(profile), seed,
+    )
+    return elementary_math_from_english_tree(value, profile)  # type: ignore[return-value]
+
+
+def elementary_math_scenarios(
+    config: CategoryConfig,
+    center: dict[str, object],
+    profile: ElementaryMathProfile,
+    seed: str,
+) -> list[str]:
+    value = elementary_math_with_english_helpers(
+        elementary_english_scenarios,
+        config, elementary_math_proxy_center(center), _elementary_math_proxy_profile(profile), seed,
+    )
+    return elementary_math_from_english_tree(value, profile)  # type: ignore[return-value]
+
+
 def offer_nodes(config: CategoryConfig, center: dict[str, object], service_id: str) -> list[dict[str, object]]:
     offers: list[dict[str, object]] = []
     for subject in config.subjects:
@@ -4982,7 +8678,7 @@ def build_graph(
     sections: list[dict[str, object]],
     faq: list[tuple[str, str]],
     links: list[tuple[str, str]],
-    high_english: HighEnglishProfile | MiddleEnglishProfile | HighMathProfile | None = None,
+    high_english: HighEnglishProfile | ElementaryEnglishProfile | MiddleEnglishProfile | ElementaryMathProfile | HighMathProfile | None = None,
 ) -> dict[str, object]:
     locality = str(center["locality"])
     slug = str(center["slug"])
@@ -5005,11 +8701,22 @@ def build_graph(
     if high_english is not None:
         about.extend({"@type": "Thing", "name": intent.label} for intent in high_english.intents)
         subject = config.subjects[0]
-        cumulative_topic = "모의고사" if config.level == "고등" else "누적 학습"
-        about.extend((
-            {"@type": "Thing", "name": f"{config.level} {subject} 내신"},
-            {"@type": "Thing", "name": f"{config.level} {subject} {cumulative_topic}"},
-        ))
+        if isinstance(high_english, ElementaryEnglishProfile):
+            about.extend((
+                {"@type": "Thing", "name": "초등 영어 학교 단원 학습"},
+                {"@type": "Thing", "name": "초등 영어 읽기와 표현"},
+            ))
+        elif isinstance(high_english, ElementaryMathProfile):
+            about.extend((
+                {"@type": "Thing", "name": "초등 수학 학교 단원 학습"},
+                {"@type": "Thing", "name": "초등 수학 개념과 풀이 과정"},
+            ))
+        else:
+            cumulative_topic = "모의고사" if config.level == "고등" else "누적 학습"
+            about.extend((
+                {"@type": "Thing", "name": f"{config.level} {subject} 내신"},
+                {"@type": "Thing", "name": f"{config.level} {subject} {cumulative_topic}"},
+            ))
     mentions = [
         {"@type": "Place", "name": locality},
         *({"@type": "EducationalOrganization", "name": school} for school in schools),
@@ -5074,7 +8781,7 @@ def build_graph(
         "author": {"@id": org_id},
         "publisher": {"@id": org_id},
         "datePublished": CONTENT_DATE,
-        "dateModified": "2026-09-01" if high_english is not None else CONTENT_DATE,
+        "dateModified": "2026-09-02" if high_english is not None else CONTENT_DATE,
         "articleSection": [config.label, str(center["region"]), str(center["district"]), locality],
         "about": about,
         "mentions": mentions,
@@ -5085,14 +8792,31 @@ def build_graph(
         article["educationalLevel"] = grades
     if high_english is not None:
         subject = config.subjects[0]
-        cumulative_topic = "모의고사" if config.level == "고등" else "누적 학습"
-        article["keywords"] = [
-            title,
-            high_english.focus,
-            *(intent.label for intent in high_english.intents),
-            f"{config.level} {subject} 내신",
-            f"{config.level} {subject} {cumulative_topic}",
-        ]
+        if isinstance(high_english, ElementaryEnglishProfile):
+            article["keywords"] = [
+                title,
+                high_english.focus,
+                *(intent.label for intent in high_english.intents),
+                "초등 영어 학교 단원 학습",
+                "초등 영어 읽기와 표현",
+            ]
+        elif isinstance(high_english, ElementaryMathProfile):
+            article["keywords"] = [
+                title,
+                high_english.focus,
+                *(intent.label for intent in high_english.intents),
+                "초등 수학 학교 단원 학습",
+                "초등 수학 개념과 풀이 과정",
+            ]
+        else:
+            cumulative_topic = "모의고사" if config.level == "고등" else "누적 학습"
+            article["keywords"] = [
+                title,
+                high_english.focus,
+                *(intent.label for intent in high_english.intents),
+                f"{config.level} {subject} 내신",
+                f"{config.level} {subject} {cumulative_topic}",
+            ]
     service = {
         "@type": "Service",
         "@id": service_id,
@@ -5196,7 +8920,7 @@ def render_info(config: CategoryConfig, center: dict[str, object]) -> str:
     )
     verification_text = (
         "센터명·주소·가능 학년·학교명은 제공 센터 자료를 기준으로 정리했습니다. 시간표와 교습비는 등록 전에 최신 안내를 다시 확인하며, 학습 방법은 학생 자료를 살펴보기 위한 일반 안내입니다."
-        if config.slug == "고등영어학원" else
+        if config.slug in {"초등영어학원", "초등수학학원", "고등영어학원"} else
         "표기된 학년은 제공 자료 기준이며, 시간표와 실제 개설 여부는 상담 시 확인합니다."
     )
     return (
@@ -5304,11 +9028,15 @@ def render_page(
     student = str(record["student"])
     quick = str(record["quick"])
     high_english = record.get("high_english_profile")
+    elementary_english = record.get("elementary_english_profile")
+    elementary_math = record.get("elementary_math_profile")
     middle_english = record.get("middle_english_profile")
     middle_math = record.get("middle_math_profile")
     high_math = record.get("high_math_profile")
     high_profile = (
         high_english if isinstance(high_english, HighEnglishProfile)
+        else elementary_english if isinstance(elementary_english, ElementaryEnglishProfile)
+        else elementary_math if isinstance(elementary_math, ElementaryMathProfile)
         else middle_english if isinstance(middle_english, MiddleEnglishProfile)
         else middle_math if isinstance(middle_math, HighMathProfile)
         else high_math if isinstance(high_math, HighMathProfile)
@@ -5318,24 +9046,36 @@ def render_page(
     if high_profile is not None:
         primary, secondary, support, extra = high_profile.intents
         quick_student_note = stable_pick(title, "high-quick-note", [
-            f"{locality} 상담 메모에는 {primary.label}의 첫 행동과 {secondary.label}의 재확인 날짜를 적고 이용 조건은 별도 줄로 나눕니다.",
-            f"{locality} 학생의 {primary.label} 설명과 {secondary.label} 풀이 흔적이 이어지는지 확인하고 센터 정보는 따로 기록합니다.",
+            f"{locality} 상담 메모에는 {primary.label} 관련 첫 행동과 {secondary.label}을 살필 날짜를 적고 이용 조건은 별도 줄로 나눕니다.",
+            f"{locality} 학생의 {primary.label} 자료 위치와 {secondary.label} 관련 활동 흔적을 각각 확인하고 센터 정보는 따로 기록합니다.",
             f"{locality} 학습 진단에는 {primary.label}·{secondary.label}의 확인 기록을, 등록 조건에는 주소·학년·시간표를 적습니다.",
-            f"{locality} 학생의 한 가지 병목과 {primary.label}의 첫 행동, {secondary.label}의 재확인 날짜가 분명해야 계획을 비교할 수 있습니다.",
-            f"{locality} 시험지에서는 {primary.label}에서 막힌 이유를, 다음 계획에서는 {secondary.label}의 확인일을 찾아 이용 조건과 구분합니다.",
-            f"{locality} 상담 답변을 {primary.label}의 실행 항목과 {secondary.label}의 완료 기준으로 바꾸고 주소·시간표는 별도 메모에 둡니다.",
-            f"{locality} 학생 기록에는 {primary.label}의 문제 번호와 {secondary.label}의 재확인 날짜가 함께 있어야 합니다.",
-            f"{locality} 학습 계획은 {primary.label} 자료와 {secondary.label} 질문에서 시작하고 센터 조건은 마지막에 따로 확인합니다.",
-            f"{locality} 학생의 {primary.label} 시작일과 {secondary.label} 확인일을 나란히 적되 학년·시간표는 이용 조건으로 구분합니다.",
-            f"{locality} 학습 메모에서는 {primary.label}의 확인 기록과 {secondary.label}의 다음 행동을 먼저 확인합니다.",
-            f"{locality} 상담 전에는 {primary.label} 자료와 {secondary.label} 재확인 질문을 준비하고 등록 조건은 별도 표에 둡니다.",
-            f"{locality} 학생 계획에 {primary.label} 실행 여부와 {secondary.label} 점검 결과가 모두 있어야 다음 순서를 정할 수 있습니다.",
+            f"{locality} 학생의 한 가지 병목과 {primary.label} 관련 첫 행동, {secondary.label}을 살필 날짜가 분명해야 계획을 비교할 수 있습니다.",
+            f"{locality} 학습 자료에서는 {primary.label}{particle_for(primary.label, '을', '를')} 확인할 근거를 찾고, 다음 계획에서는 {secondary.label}{particle_for(secondary.label, '을', '를')} 살필 날짜를 적어 이용 조건과 구분합니다.",
+            f"{locality} 상담 답변을 {primary.label} 관련 실행 항목과 {secondary.label} 재확인 기준으로 바꾸고 주소·시간표는 별도 메모에 둡니다.",
+            f"{locality} 학생 기록에는 {primary.label}을 확인한 자료 위치와 {secondary.label}을 살필 날짜가 함께 있어야 합니다.",
+            f"{locality} 학습 계획은 {primary.label} 자료와 {secondary.label} 확인 항목에서 시작하고 센터 조건은 마지막에 따로 확인합니다.",
+            f"{locality} 학생의 {primary.label} 관련 활동을 시작할 날짜와 {secondary.label}을 확인할 날짜를 나란히 적되 학년·시간표는 이용 조건으로 구분합니다.",
+            f"{locality} 학습 메모에서는 {primary.label}의 확인 기록과 {secondary.label}의 다음 행동을 먼저 나누어 적습니다.",
+            f"{locality} 상담 전에는 {primary.label} 자료와 {secondary.label} 점검 항목을 준비하고 등록 조건은 별도 표에 둡니다.",
+            f"{locality} 학생 계획에 {primary.label} 관련 활동의 실행 여부와 {secondary.label} 점검 결과가 모두 있어야 다음 순서를 정할 수 있습니다.",
         ])
         quick_note_tokens: list[str] = []
         for intent in high_profile.intents:
             quick_note_tokens.extend((intent.label, intent.evidence))
         quick_student_note = normalize_particle_joins(quick_student_note, quick_note_tokens)
-        if isinstance(middle_english, MiddleEnglishProfile):
+        if isinstance(elementary_english, ElementaryEnglishProfile):
+            quick_student_note = naturalize_elementary_english_text(
+                quick_student_note, elementary_english
+            )
+            quick_student_note = quick_student_note.replace(
+                "오답 원인·다시 확인 재확인 기준",
+                "오답 원인을 다시 살필 기준",
+            )
+        elif isinstance(elementary_math, ElementaryMathProfile):
+            quick_student_note = naturalize_elementary_math_text(
+                quick_student_note, elementary_math
+            )
+        elif isinstance(middle_english, MiddleEnglishProfile):
             quick_student_note = naturalize_middle_english_text(quick_student_note, middle_english)
         elif isinstance(middle_math, HighMathProfile):
             quick_student_note = naturalize_middle_math_text(quick_student_note, middle_math)
@@ -5343,11 +9083,38 @@ def render_page(
             quick_student_note = naturalize_high_math_text(quick_student_note, high_math)
         subject_label = config.subjects[0]
         quick_heading = f"{locality} {config.level} {subject_label}: {high_profile.focus}"
+        if isinstance(elementary_english, ElementaryEnglishProfile):
+            quick_heading = (
+                f"{locality} 초등 영어: {primary.label}{particle_for(primary.label, '과', '와')} "
+                f"{secondary.label} 점검"
+            )
+            quick_heading = naturalize_elementary_english_text(
+                quick_heading, elementary_english
+            )
+        elif isinstance(elementary_math, ElementaryMathProfile):
+            quick_heading = (
+                f"{locality} 초등 수학: {primary.label}{particle_for(primary.label, '과', '와')} "
+                f"{secondary.label} 점검"
+            )
+            quick_heading = naturalize_elementary_math_text(
+                quick_heading, elementary_math
+            )
         manuscript_intro = (
             f"핵심 주제는 ‘{high_profile.focus}’입니다. "
-            f"{primary.label}·{secondary.label}의 현재선을 확인하고 {support.label}·{extra.label}의 실행 기록과 학교·센터 사실을 분리해 살펴봅니다."
+            f"{primary.label}·{secondary.label}의 현재선을 확인하고 {support.label}·{extra.label} 관련 활동·점검 기록과 학교·센터 사실을 분리해 살펴봅니다."
         )
-        if isinstance(middle_math, HighMathProfile):
+        if isinstance(elementary_english, ElementaryEnglishProfile):
+            manuscript_intro = naturalize_elementary_english_text(
+                manuscript_intro, elementary_english
+            )
+        elif isinstance(elementary_math, ElementaryMathProfile):
+            manuscript_intro = naturalize_elementary_math_text(
+                f"핵심 주제는 ‘{high_profile.focus}’입니다. "
+                f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}의 출발점을 확인하고, "
+                f"{support.label} 및 {extra.label}의 활동·점검 기록과 학교·센터 사실을 분리해 살펴봅니다.",
+                elementary_math,
+            )
+        elif isinstance(middle_math, HighMathProfile):
             manuscript_intro = naturalize_middle_math_text(manuscript_intro, middle_math)
         elif isinstance(high_math, HighMathProfile):
             manuscript_intro = naturalize_high_math_text(manuscript_intro, high_math)
@@ -5372,7 +9139,11 @@ def render_page(
         links,
         high_profile,
     )
-    if isinstance(middle_math, HighMathProfile):
+    if isinstance(elementary_english, ElementaryEnglishProfile):
+        graph = naturalize_elementary_english_tree(graph, elementary_english)  # type: ignore[assignment]
+    elif isinstance(elementary_math, ElementaryMathProfile):
+        graph = naturalize_elementary_math_tree(graph, elementary_math)  # type: ignore[assignment]
+    elif isinstance(middle_math, HighMathProfile):
         graph = naturalize_middle_math_tree(graph, middle_math)  # type: ignore[assignment]
     elif isinstance(high_math, HighMathProfile):
         graph = naturalize_high_math_tree(graph, high_math)  # type: ignore[assignment]
@@ -5504,10 +9275,249 @@ def build_records(config: CategoryConfig, centers: list[dict[str, object]], sour
         signals = rank_signals(config, raw, seed)
         title = f"{center['locality']} {config.label}"
         english_profile: HighEnglishProfile | None = None
+        elementary_profile: ElementaryEnglishProfile | None = None
+        elementary_math_record_profile: ElementaryMathProfile | None = None
         middle_profile: MiddleEnglishProfile | None = None
         middle_math_record_profile: HighMathProfile | None = None
         math_profile: HighMathProfile | None = None
-        if config.slug == "중등영어학원":
+        if config.slug == "초등영어학원":
+            locality = str(center["locality"])
+            elementary_profile = elementary_english_profile(raw, locality)
+            elementary_grades = relevant_grades(config, center, "영어")
+            if not elementary_grades and any(
+                intent.code == "next_stage"
+                for intent in elementary_profile.intents
+            ):
+                neutral_intents: list[HighEnglishIntent] = [
+                    intent
+                    for intent in elementary_profile.intents
+                    if intent.code != "next_stage"
+                ]
+                neutral_intents.extend(
+                    ELEMENTARY_ENGLISH_INTENT_BY_CODE[code]
+                    for code in (
+                        "diagnosis", "phonics", "vocabulary", "sentence",
+                        "reading", "routine", "grammar", "listening",
+                    )
+                    if ELEMENTARY_ENGLISH_INTENT_BY_CODE[code]
+                    not in neutral_intents
+                )
+                elementary_profile = ElementaryEnglishProfile(
+                    focus=elementary_profile.focus,
+                    source_title=elementary_profile.source_title,
+                    intents=tuple(neutral_intents[:4]),
+                    source_markers=tuple(
+                        intent.label for intent in neutral_intents[:4]
+                    ),
+                )
+            protected_focus = (
+                locality in ELEMENTARY_ENGLISH_SAFE_FOCUS_OVERRIDES
+                or locality in ELEMENTARY_ENGLISH_MIDDLE_TRANSITION_FOCUS_OVERRIDES
+            )
+            unsupported_focus_grades = {
+                grade
+                for grade in re.findall(r"초[1-6]", elementary_profile.focus)
+                if grade not in elementary_grades
+            }
+            if unsupported_focus_grades and not protected_focus:
+                safe_focus = elementary_profile.focus
+                for grade in sorted(unsupported_focus_grades):
+                    safe_focus = safe_focus.replace(grade, "초등 과정")
+                elementary_profile = ElementaryEnglishProfile(
+                    focus=repair_elementary_english_focus(
+                        safe_focus.replace("초등 과정 초등 과정", "초등 과정")
+                    ),
+                    source_title=elementary_profile.source_title,
+                    intents=elementary_profile.intents,
+                    source_markers=elementary_profile.source_markers,
+                )
+            used_focuses = {
+                str(existing["elementary_english_profile"].focus)
+                for existing in records
+                if isinstance(
+                    existing.get("elementary_english_profile"),
+                    ElementaryEnglishProfile,
+                )
+            }
+            if elementary_profile.focus in used_focuses:
+                primary, secondary, support, extra = elementary_profile.intents
+                focus_candidates = (
+                    f"{primary.label}에서 {secondary.label}으로 이어지는 초등 영어 학습 순서",
+                    f"{primary.label}{particle_for(primary.label, '과', '와')} {support.label}을 {secondary.label}로 확인하는 방법",
+                    f"{secondary.label} 기록으로 {primary.label}을 다시 점검하는 방법",
+                    f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label} 뒤 {extra.label}을 확인하는 학습 기준",
+                    f"{locality} 영어 자료로 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}을 구분하는 방법",
+                    f"{locality} 아이의 {support.evidence}와 {extra.action}을 연결하는 초등 영어 점검",
+                )
+                normalized_candidates = tuple(
+                    repair_elementary_english_focus(
+                        naturalize_elementary_english_text(value, elementary_profile)
+                    )
+                    for value in focus_candidates
+                )
+                replacement = next(
+                    (value for value in normalized_candidates if value not in used_focuses),
+                    None,
+                )
+                if replacement is None or protected_focus:
+                    raise ValueError(
+                        f"unable to create unique elementary English focus: {title}"
+                    )
+                elementary_profile = ElementaryEnglishProfile(
+                    focus=replacement,
+                    source_title=elementary_profile.source_title,
+                    intents=elementary_profile.intents,
+                    source_markers=elementary_profile.source_markers,
+                )
+            student = elementary_english_student_type(
+                config, center, elementary_profile, seed
+            )
+            profile_tokens = list(
+                elementary_english_particle_tokens(elementary_profile)
+            )
+            if elementary_grades:
+                profile_tokens.append("·".join(elementary_grades))
+            tokens = (
+                *page_particle_tokens(config, center, signals, student),
+                *profile_tokens,
+            )
+            student = normalize_particle_joins(student, tokens)
+            sections = normalize_generated_tree(
+                elementary_english_sections(
+                    config, center, elementary_profile, seed
+                ),
+                tokens,
+            )
+            faq = normalize_generated_tree(
+                elementary_english_faq(config, center, elementary_profile, seed),
+                tokens,
+            )
+            scenarios = normalize_generated_tree(
+                elementary_english_scenarios(
+                    config, center, elementary_profile, seed
+                ),
+                tokens,
+            )
+            meta = normalize_particle_joins(
+                elementary_english_meta_description(
+                    config, center, elementary_profile
+                ),
+                tokens,
+            )
+            quick = normalize_particle_joins(
+                elementary_english_quick_answer(
+                    config, center, elementary_profile, seed
+                ),
+                tokens,
+            )
+        elif config.slug == "초등수학학원":
+            locality = str(center["locality"])
+            elementary_math_record_profile = elementary_math_profile(raw, locality)
+            elementary_math_grades = relevant_grades(config, center, "수학")
+            if not elementary_math_grades and any(
+                intent.code == "transition"
+                for intent in elementary_math_record_profile.intents
+            ):
+                neutral_intents: list[HighMathIntent] = [
+                    intent
+                    for intent in elementary_math_record_profile.intents
+                    if intent.code != "transition"
+                ]
+                neutral_intents.extend(
+                    ELEMENTARY_MATH_INTENT_BY_CODE[code]
+                    for code in (
+                        "diagnosis", "concept", "number", "word_problem",
+                        "calculation", "error", "school", "routine",
+                    )
+                    if ELEMENTARY_MATH_INTENT_BY_CODE[code] not in neutral_intents
+                )
+                elementary_math_record_profile = ElementaryMathProfile(
+                    focus=elementary_math_record_profile.focus,
+                    source_title=elementary_math_record_profile.source_title,
+                    intents=tuple(neutral_intents[:4]),
+                    source_markers=tuple(intent.label for intent in neutral_intents[:4]),
+                )
+            protected_focus = (
+                locality in ELEMENTARY_MATH_SAFE_FOCUS_OVERRIDES
+                or locality in ELEMENTARY_MATH_TRANSITION_FOCUS_OVERRIDES
+            )
+            unsupported_focus_grades = {
+                grade
+                for grade in re.findall(r"초[1-6]", elementary_math_record_profile.focus)
+                if grade not in elementary_math_grades
+            }
+            if unsupported_focus_grades and not protected_focus:
+                safe_focus = elementary_math_record_profile.focus
+                for grade in sorted(unsupported_focus_grades):
+                    safe_focus = safe_focus.replace(grade, "초등 과정")
+                elementary_math_record_profile = ElementaryMathProfile(
+                    focus=repair_elementary_math_focus(safe_focus),
+                    source_title=elementary_math_record_profile.source_title,
+                    intents=elementary_math_record_profile.intents,
+                    source_markers=elementary_math_record_profile.source_markers,
+                )
+            used_focuses = {
+                str(existing["elementary_math_profile"].focus)
+                for existing in records
+                if isinstance(existing.get("elementary_math_profile"), ElementaryMathProfile)
+            }
+            if elementary_math_record_profile.focus in used_focuses:
+                primary, secondary, support, extra = elementary_math_record_profile.intents
+                focus_candidates = (
+                    f"{primary.label}에서 {secondary.label}으로 이어지는 초등 수학 학습 순서",
+                    f"{primary.label}{particle_for(primary.label, '과', '와')} {support.label}을 {secondary.label}로 확인하는 방법",
+                    f"{secondary.label} 기록으로 {primary.label}을 다시 점검하는 방법",
+                    f"{primary.label}{particle_for(primary.label, '과', '와')} {secondary.label} 뒤 {extra.label}을 확인하는 학습 기준",
+                    f"{locality} 수학 자료로 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label}을 구분하는 방법",
+                    f"{locality} 아이의 {support.label}과 {extra.label}을 연결하는 초등 수학 점검",
+                )
+                normalized_candidates = tuple(
+                    repair_elementary_math_focus(
+                        naturalize_elementary_math_text(value, elementary_math_record_profile)
+                    )
+                    for value in focus_candidates
+                )
+                replacement = next(
+                    (value for value in normalized_candidates if value not in used_focuses),
+                    None,
+                )
+                if replacement is None or protected_focus:
+                    raise ValueError(f"unable to create unique elementary Math focus: {title}")
+                elementary_math_record_profile = ElementaryMathProfile(
+                    focus=replacement,
+                    source_title=elementary_math_record_profile.source_title,
+                    intents=elementary_math_record_profile.intents,
+                    source_markers=elementary_math_record_profile.source_markers,
+                )
+            student = elementary_math_student_type(
+                config, center, elementary_math_record_profile, seed
+            )
+            profile_tokens = list(elementary_math_particle_tokens(elementary_math_record_profile))
+            if elementary_math_grades:
+                profile_tokens.append("·".join(elementary_math_grades))
+            tokens = (*page_particle_tokens(config, center, signals, student), *profile_tokens)
+            student = normalize_particle_joins(student, tokens)
+            sections = normalize_generated_tree(
+                elementary_math_sections(config, center, elementary_math_record_profile, seed),
+                tokens,
+            )
+            faq = normalize_generated_tree(
+                elementary_math_faq(config, center, elementary_math_record_profile, seed),
+                tokens,
+            )
+            scenarios = normalize_generated_tree(
+                elementary_math_scenarios(config, center, elementary_math_record_profile, seed),
+                tokens,
+            )
+            meta = normalize_particle_joins(
+                elementary_math_meta_description(config, center, elementary_math_record_profile),
+                tokens,
+            )
+            quick = normalize_particle_joins(
+                elementary_math_quick_answer(config, center, elementary_math_record_profile, seed),
+                tokens,
+            )
+        elif config.slug == "중등영어학원":
             middle_profile = middle_english_profile(raw, str(center["locality"]))
             middle_grades = relevant_grades(config, center, "영어")
             if not middle_grades and any(
@@ -5793,6 +9803,10 @@ def build_records(config: CategoryConfig, centers: list[dict[str, object]], sour
         }
         if english_profile is not None:
             record["high_english_profile"] = english_profile
+        if elementary_profile is not None:
+            record["elementary_english_profile"] = elementary_profile
+        if elementary_math_record_profile is not None:
+            record["elementary_math_profile"] = elementary_math_record_profile
         if middle_profile is not None:
             record["middle_english_profile"] = middle_profile
         if middle_math_record_profile is not None:
@@ -5873,7 +9887,7 @@ def high_english_collision_tail(
         f"첫 주가 끝나면 ‘{support.evidence}’와 ‘{extra.checkpoint}’를 보고 다음 분량을 유지할지 정하세요.",
         f"계획표에는 ‘{support.action}’의 완료일과 ‘{extra.action}’을 시작할 조건을 다른 칸에 적으세요.",
         f"미완료가 생기면 ‘{support.concern}’의 답을 확인한 뒤 시간과 분량 중 한 가지만 바꾸세요.",
-        f"다음 점검일에는 ‘{support.checkpoint}’와 ‘{extra.checkpoint}’에 학생이 직접 답하게 하세요.",
+        f"다음 점검일에는 ‘{support.checkpoint}’와 ‘{extra.checkpoint}’를 살피고 학생 설명을 함께 기록하세요.",
         f"일주일 기록에서 ‘{support.evidence}’가 바뀐 지점과 ‘{extra.evidence}’가 남은 지점을 구분하세요.",
         f"첫 행동은 ‘{support.action}’으로 제한하고 완료 뒤 ‘{extra.action}’을 다음 주에 넣을지 판단하세요.",
         f"계획을 수정한 이유는 ‘{support.checkpoint}’의 결과와 ‘{extra.concern}’에 대한 학생 답으로 남기세요.",
@@ -5930,6 +9944,48 @@ def high_english_collision_tail(
     return normalize_particle_joins(tail, high_english_particle_tokens(profile))
 
 
+def individualize_duplicate_elementary_math_sections(
+    records_by_category: dict[str, list[dict[str, object]]],
+) -> None:
+    """Add one evidence-led note only where a whole math section collides."""
+
+    records = records_by_category.get("초등수학학원", [])
+    occurrences: dict[str, list[tuple[dict[str, object], dict[str, object]]]] = defaultdict(list)
+    for record in records:
+        for section in record["sections"]:
+            section_text = clean(" ".join([str(section["heading"]), *section["paragraphs"]]))
+            occurrences[section_text].append((record, section))
+    for references in occurrences.values():
+        if len(references) < 2:
+            continue
+        for record, section in references:
+            profile = record["elementary_math_profile"]
+            primary, secondary, support, extra = profile.intents
+            locality = str(record["center"]["locality"])
+            phase = {
+                "diagnosis": "진단",
+                "evidence-action": "실행",
+                "school-home": "학교 단원",
+                "verified-facts": "사실 확인",
+                "seven-day-plan": "7일 계획",
+                "consultation": "상담",
+            }.get(str(section["key"]), "다음 점검")
+            notes = (
+                f"{locality} {phase} 기록에는 {primary.label}의 첫 자료와 {secondary.label}의 재확인일을 나누어 남기세요.",
+                f"{locality} {phase} 단계에서는 ‘{support.evidence}’가 나온 위치와 {extra.label}을 다시 볼 날짜를 함께 적습니다.",
+                f"{locality} {phase} 메모에는 {primary.label}의 실행 흔적과 {support.label}의 확인 결과를 다른 칸에 둡니다.",
+                f"{locality} {phase}에서 ‘{profile.focus}’은 {secondary.label} 자료와 {extra.label} 재확인 기록으로 구체화합니다.",
+            )
+            note = stable_pick(
+                f"{record['title']}|{section['key']}",
+                "elementary-math-section-collision-v1",
+                notes,
+            )
+            section["paragraphs"].append(
+                naturalize_elementary_math_text(note, profile)
+            )
+
+
 def contextualize_duplicate_paragraphs(records_by_category: dict[str, list[dict[str, object]]]) -> None:
     """Add page context only where a generated paragraph would otherwise repeat."""
     occurrences: dict[str, list[tuple[str, dict[str, object], dict[str, object], int]]] = defaultdict(list)
@@ -5950,7 +10006,7 @@ def contextualize_duplicate_paragraphs(records_by_category: dict[str, list[dict[
             config = CONFIG_BY_SLUG[slug]
             center = record["center"]
             locality = str(center["locality"])
-            if slug in {"중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"}:
+            if slug in {"초등영어학원", "초등수학학원", "중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"}:
                 # High-English pages use purpose-written section combinations.
                 # Rewriting every shared advisory paragraph with a locality
                 # prefix made otherwise useful Korean read like a template.
@@ -6007,7 +10063,7 @@ def contextualize_duplicate_faq_answers(records_by_category: dict[str, list[dict
             config = CONFIG_BY_SLUG[slug]
             center = record["center"]
             locality = str(center["locality"])
-            if slug in {"중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"}:
+            if slug in {"초등영어학원", "초등수학학원", "중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"}:
                 # Keep the concise authored answer.  Page-level FAQ sets remain
                 # unique and repeated answers are bounded by corpus QA.
                 continue
@@ -6062,7 +10118,7 @@ def individualize_frequent_middle_english_paragraphs(
                 "exam-strategy": f"{locality} 시험표에는 {primary.label}의 학교 범위 마감일과 {secondary.label}의 누적 학습 확인일을 나누어 적으세요.",
                 "center-facts": f"{locality}의 학습 판단과 센터 이용 조건은 같은 문장에 섞지 말고 확인한 자료와 날짜를 각각 남기세요.",
                 "four-week-plan": f"{locality} 계획에서는 ‘{support.action}’의 완료일과 ‘{extra.checkpoint}’의 재확인일을 다른 칸에 두세요.",
-                "consultation-checklist": f"{locality} 상담 뒤에는 {primary.label}의 첫 행동과 {secondary.label}의 확인 기준을 학생이 직접 설명하게 하세요.",
+                "consultation-checklist": f"{locality} 상담 뒤에는 {primary.label} 관련 첫 행동과 {secondary.label}의 확인 기준을 학생이 직접 설명하게 하세요.",
             }
             note = notes.get(
                 key,
@@ -6151,7 +10207,7 @@ def individualize_duplicate_middle_english_sections(
                 "consultation-checklist": (
                     f"{locality} 상담 메모에는 ‘{primary.action}’의 실행 날짜와 ‘{secondary.checkpoint}’의 재확인 날짜를 함께 적으세요.",
                     f"{locality}에서는 상담 답변을 최근 시험지의 실제 표시와 연결해 설명할 수 있는지까지 확인하세요.",
-                    f"{locality} 상담 뒤에는 {primary.label}의 첫 행동과 {secondary.label}의 확인일을 학생이 직접 설명하게 하세요.",
+                    f"{locality} 상담 뒤에는 {primary.label} 관련 첫 행동과 {secondary.label}의 확인일을 학생이 직접 설명하게 하세요.",
                 ),
             }.get(
                 key,
@@ -6203,7 +10259,7 @@ def individualize_duplicate_high_english_sections(
                 "consultation-checklist": (
                     f"{locality} 상담 메모에는 ‘{primary.action}’의 실행 날짜와 ‘{secondary.checkpoint}’의 재확인 날짜를 나란히 적어 답변이 실제 계획으로 이어지는지 확인하세요.",
                     f"{locality}에서 상담할 때는 ‘{primary.consult_question}’라고 묻고, 답을 학생의 최근 자료에 적용할 수 있는지까지 확인하세요.",
-                    f"{locality} 상담 뒤에는 {primary.label}의 첫 행동과 {secondary.label}의 확인일을 학생이 직접 설명하게 해 추상적인 안내와 실행 계획을 구분하세요.",
+                    f"{locality} 상담 뒤에는 {primary.label} 관련 첫 행동과 {secondary.label}의 확인일을 학생이 직접 설명하게 해 추상적인 안내와 실행 계획을 구분하세요.",
                 ),
             }.get(
                 key,
@@ -6255,7 +10311,7 @@ def individualize_duplicate_high_math_sections(
             }.get(
                 key,
                 (
-                    f"{locality}에서는 {primary.label}의 첫 행동과 {secondary.label}의 재확인 기준을 서로 다른 칸에 남겨 이 판단을 실제 계획에 연결하세요.",
+                    f"{locality}에서는 {primary.label} 관련 첫 행동과 {secondary.label}의 재확인 기준을 서로 다른 칸에 남겨 이 판단을 실제 계획에 연결하세요.",
                 ),
             )
             note = stable_pick(f"{record['title']}|{key}", "high-math-section-note", notes)
@@ -6307,7 +10363,7 @@ def individualize_duplicate_middle_math_sections(
             }.get(
                 key,
                 (
-                    f"{locality}에서는 {primary.label}의 첫 행동과 {secondary.label}의 재확인 기준을 서로 다른 칸에 남겨 실제 계획에 연결하세요.",
+                    f"{locality}에서는 {primary.label} 관련 첫 행동과 {secondary.label}의 재확인 기준을 서로 다른 칸에 남겨 실제 계획에 연결하세요.",
                 ),
             )
             note = stable_pick(f"{record['title']}|{key}", "middle-math-section-note", notes)
@@ -6315,6 +10371,374 @@ def individualize_duplicate_middle_math_sections(
                 clean(f"{section['paragraphs'][-1]} {note}"),
                 profile,
             )
+
+
+def individualize_frequent_elementary_english_paragraphs(
+    records_by_category: dict[str, list[dict[str, object]]],
+) -> None:
+    """Contextualise only elementary-English paragraphs over the corpus limit."""
+
+    records = records_by_category.get("초등영어학원", [])
+    occurrences: dict[
+        str, list[tuple[dict[str, object], dict[str, object], int]]
+    ] = defaultdict(list)
+    for record in records:
+        for section in record["sections"]:
+            for paragraph_index, paragraph in enumerate(section["paragraphs"]):
+                occurrences[clean(paragraph)].append(
+                    (record, section, paragraph_index)
+                )
+    for references in occurrences.values():
+        if len(references) <= HIGH_ENGLISH_PARAGRAPH_DF_LIMIT:
+            continue
+        for record, section, paragraph_index in references:
+            center = record["center"]
+            profile = record["elementary_english_profile"]
+            primary, secondary = profile.intents[:2]
+            locality = str(center["locality"])
+            note = stable_pick(
+                f"{record['title']}|{section['key']}|{paragraph_index}",
+                "elementary-paragraph-note",
+                (
+                    f"{locality} 아이의 기록에서는 {primary.label} 관련 자료의 시작 위치와 {secondary.label}의 다음 확인일을 다른 칸에 남기세요.",
+                    f"{locality} 학부모는 이 절차를 {primary.evidence}와 {secondary.checkpoint}에 적용해 아이가 혼자 설명한 부분을 표시하세요.",
+                    f"{locality}에서는 {primary.action} 뒤 {secondary.label}의 재확인 결과를 한 줄로 덧붙이면 다음 순서를 정하기 쉽습니다.",
+                    f"{locality} 아이에게는 {primary.label}과 {secondary.label} 중 먼저 도움을 요청할 영역을 직접 고르게 해 보세요.",
+                ),
+            )
+            old = str(section["paragraphs"][paragraph_index])
+            section["paragraphs"][paragraph_index] = (
+                naturalize_elementary_english_text(
+                    clean(f"{old} {note}"), profile
+                )
+            )
+
+
+def individualize_frequent_elementary_english_faq_answers(
+    records_by_category: dict[str, list[dict[str, object]]],
+) -> None:
+    records = records_by_category.get("초등영어학원", [])
+    occurrences: dict[str, list[tuple[dict[str, object], int]]] = defaultdict(list)
+    for record in records:
+        for faq_index, (_question, answer) in enumerate(record["faq"]):
+            occurrences[clean(answer)].append((record, faq_index))
+    for references in occurrences.values():
+        if len(references) <= HIGH_ENGLISH_PARAGRAPH_DF_LIMIT:
+            continue
+        for record, faq_index in references:
+            profile = record["elementary_english_profile"]
+            locality = str(record["center"]["locality"])
+            primary, secondary = profile.intents[:2]
+            note = stable_pick(
+                f"{record['title']}|{faq_index}",
+                "elementary-faq-note",
+                (
+                    f"{locality} 상담 메모에는 {primary.label} 관련 첫 행동과 {secondary.label}의 재확인 날짜를 함께 적으세요.",
+                    f"{locality} 아이가 직접 설명한 내용은 {primary.label}{particle_for(primary.label, '과', '와')} {secondary.label} 관련 활동의 다음 분량을 정하는 근거로 사용하세요.",
+                    f"{locality}에서는 센터 이용 조건과 {primary.label} 관련 학습 질문을 서로 다른 줄에 남기세요.",
+                ),
+            )
+            question, answer = record["faq"][faq_index]
+            record["faq"][faq_index] = (
+                question,
+                naturalize_elementary_english_text(
+                    clean(f"{answer} {note}"), profile
+                ),
+            )
+
+
+def individualize_duplicate_elementary_english_sections(
+    records_by_category: dict[str, list[dict[str, object]]],
+) -> None:
+    """Resolve only exact section collisions with the page's unique focus."""
+
+    records = records_by_category.get("초등영어학원", [])
+    occurrences: dict[
+        str, list[tuple[dict[str, object], dict[str, object]]]
+    ] = defaultdict(list)
+    for record in records:
+        for section in record["sections"]:
+            section_text = clean(
+                " ".join([str(section["heading"]), *section["paragraphs"]])
+            )
+            occurrences[section_text].append((record, section))
+    for references in occurrences.values():
+        if len(references) < 2:
+            continue
+        for record, section in references:
+            profile = record["elementary_english_profile"]
+            locality = str(record["center"]["locality"])
+            primary, secondary = profile.intents[:2]
+            key = str(section["key"])
+            if key == "diagnostic-evidence":
+                note = (
+                    f"{locality}에서는 {primary.label}의 자료 위치·실행일·재확인일을 한 줄에 적고, "
+                    f"{secondary.label}의 같은 세 항목은 다음 줄에 따로 적으세요."
+                )
+            elif key == "consultation-checklist":
+                note = (
+                    f"{locality} 상담에서는 {primary.label}{particle_for(primary.label, '과', '와')} "
+                    f"{secondary.label} 각각의 시작 자료·실행일·재확인 자료·날짜를 별도 질문으로 확인하세요."
+                )
+            else:
+                note = (
+                    f"{locality} 기록에는 {primary.label} 행동과 "
+                    f"{secondary.label} 재확인 결과를 다른 칸에 남기세요."
+                )
+            section["paragraphs"][-1] = naturalize_elementary_english_text(
+                clean(f"{section['paragraphs'][-1]} {note}"), profile
+            )
+
+
+def reduce_elementary_english_repeated_quotes(
+    records_by_category: dict[str, list[dict[str, object]]],
+) -> None:
+    """Replace a fifth long quotation with a clear backward reference.
+
+    Evidence, action and checkpoint wording is intentionally repeated across
+    the answer-first block and detailed sections, but quoting the same long
+    phrase five or more times makes the page read like a template.  Keep the
+    first four explicit occurrences, then refer to the already stated item.
+    """
+
+    def strings(value: object) -> Iterable[str]:
+        if isinstance(value, str):
+            yield value
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                yield from strings(item)
+        elif isinstance(value, dict):
+            for item in value.values():
+                yield from strings(item)
+
+    for record in records_by_category.get("초등영어학원", []):
+        profile = record["elementary_english_profile"]
+        # Preserve the fully explicit evidence/action wording in the
+        # answer-first block and FAQ answers, which must stand on their own.
+        # Later detailed references may then use a short deictic phrase.
+        ordered_keys = ("quick", "faq", "sections", "scenarios", "student", "meta")
+        quote_counts = Counter(
+            match.group(1)
+            for key in ordered_keys
+            for text in strings(record[key])
+            for match in re.finditer(r"‘([^’]{15,})’", text)
+            if clean(match.group(1)) != profile.focus
+        )
+        repeated = {phrase for phrase, count in quote_counts.items() if count > 4}
+        if not repeated:
+            continue
+
+        aliases: dict[str, str] = {}
+        for intent in profile.intents:
+            aliases.setdefault(intent.concern, f"{intent.label} 확인 항목")
+            aliases.setdefault(intent.evidence, f"{intent.label} 확인 자료")
+            aliases.setdefault(intent.action, elementary_english_action_label(intent))
+            checkpoint_alias = (
+                "그 활동을 끝낸 범위"
+                if intent.code == "next_stage"
+                else elementary_english_recheck_result(intent)
+            )
+            aliases.setdefault(intent.checkpoint, checkpoint_alias)
+            aliases.setdefault(intent.exam_use, f"{intent.label} 적용 기준")
+            aliases.setdefault(intent.consult_question, f"{intent.label} 상담 항목")
+            recheck_alias = (
+                "오답 원인을 다시 살핀 결과"
+                if intent.code == "error"
+                else f"{intent.label} 재확인 결과"
+            )
+            aliases.setdefault(elementary_english_recheck_result(intent), recheck_alias)
+        seen: Counter[str] = Counter()
+        alias_tokens = tuple(dict.fromkeys(aliases.values())) + (
+            "이 확인 항목",
+        )
+
+        def rewrite(value: object) -> object:
+            if isinstance(value, str):
+                def replace(match: re.Match[str]) -> str:
+                    phrase = match.group(1)
+                    if phrase not in repeated:
+                        return match.group(0)
+                    seen[phrase] += 1
+                    if seen[phrase] <= 4:
+                        return match.group(0)
+                    return aliases.get(phrase, "이 확인 항목")
+
+                updated = re.sub(r"‘([^’]{15,})’", replace, value)
+                updated = normalize_particle_joins(updated, alias_tokens)
+                updated = (
+                    updated
+                    .replace("재확인 기준의 재확인일", "재확인 날짜")
+                    .replace("재확인 기준의 확인일", "확인 날짜")
+                    .replace("결과의 재확인일", "결과를 다시 볼 날짜")
+                    .replace("결과의 확인일", "결과를 확인할 날짜")
+                )
+                for intent in profile.intents:
+                    action_alias = elementary_english_action_label(intent)
+                    updated = updated.replace(
+                        f"실행 항목 {action_alias}의",
+                        f"실행 항목인 {action_alias}의",
+                    )
+                return updated
+            if isinstance(value, list):
+                return [rewrite(item) for item in value]
+            if isinstance(value, tuple):
+                return tuple(rewrite(item) for item in value)
+            if isinstance(value, dict):
+                return {key: rewrite(item) for key, item in value.items()}
+            return value
+
+        for key in ordered_keys:
+            record[key] = rewrite(record[key])
+
+
+def reduce_elementary_math_repeated_quotes(
+    records_by_category: dict[str, list[dict[str, object]]],
+) -> None:
+    """Keep standalone math evidence while shortening fifth references."""
+
+    def strings(value: object) -> Iterable[str]:
+        if isinstance(value, str):
+            yield value
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                yield from strings(item)
+        elif isinstance(value, dict):
+            for item in value.values():
+                yield from strings(item)
+
+    for record in records_by_category.get("초등수학학원", []):
+        profile = record["elementary_math_profile"]
+        ordered_keys = ("quick", "faq", "sections", "scenarios", "student", "meta")
+        quote_counts = Counter(
+            match.group(1)
+            for key in ordered_keys
+            for text in strings(record[key])
+            for match in re.finditer(r"‘([^’]{15,})’", text)
+            if clean(match.group(1)) != profile.focus
+        )
+        repeated = {phrase for phrase, count in quote_counts.items() if count > 4}
+        if not repeated:
+            continue
+
+        aliases: dict[str, str] = {}
+        for intent in profile.intents:
+            aliases.setdefault(intent.concern, f"{intent.label} 확인 항목")
+            aliases.setdefault(intent.evidence, f"{intent.label} 확인 자료")
+            aliases.setdefault(intent.action, f"{intent.label} 실행 항목")
+            aliases.setdefault(intent.checkpoint, elementary_math_recheck_result(intent))
+            aliases.setdefault(intent.exam_use, f"{intent.label} 적용 기준")
+            aliases.setdefault(intent.consult_question, f"{intent.label} 상담 항목")
+            aliases.setdefault(
+                elementary_math_recheck_result(intent),
+                f"{intent.label} 재확인 결과",
+            )
+        seen: Counter[str] = Counter()
+        alias_tokens = tuple(dict.fromkeys(aliases.values())) + ("이 확인 항목",)
+
+        def rewrite(value: object) -> object:
+            if isinstance(value, str):
+                def replace(match: re.Match[str]) -> str:
+                    phrase = match.group(1)
+                    if phrase not in repeated:
+                        return match.group(0)
+                    seen[phrase] += 1
+                    if seen[phrase] <= 4:
+                        return match.group(0)
+                    return aliases.get(phrase, "이 확인 항목")
+
+                updated = re.sub(r"‘([^’]{15,})’", replace, value)
+                updated = normalize_particle_joins(updated, alias_tokens)
+                updated = (
+                    updated
+                    .replace("재확인 기준의 재확인일", "재확인 날짜")
+                    .replace("재확인 기준의 확인일", "확인 날짜")
+                    .replace("결과의 재확인일", "결과를 다시 볼 날짜")
+                    .replace("결과의 확인일", "결과를 확인할 날짜")
+                    .replace("실행 항목 실행 항목", "실행 항목")
+                )
+                return naturalize_elementary_math_text(updated, profile)
+            if isinstance(value, list):
+                return [rewrite(item) for item in value]
+            if isinstance(value, tuple):
+                return tuple(rewrite(item) for item in value)
+            if isinstance(value, dict):
+                return {key: rewrite(item) for key, item in value.items()}
+            return value
+
+        for key in ordered_keys:
+            record[key] = rewrite(record[key])
+
+
+def compact_overlong_elementary_math_records(
+    records_by_category: dict[str, list[dict[str, object]]],
+) -> None:
+    """Remove repeated explanation only on pages above the strict length cap."""
+
+    compact_localities = {
+        "삼각산동", "양평동", "수원 금곡동", "보라동", "풍덕천동",
+        "영덕동", "부발읍", "이충동", "향남읍", "유천동", "율하동",
+        "대봉동", "중화산동",
+    }
+    workflow_focus_localities = {
+        "삼각산동", "양평동", "보라동", "풍덕천동", "영덕동",
+        "부발읍", "이충동", "유천동", "대봉동", "중화산동",
+    }
+    for record in records_by_category.get("초등수학학원", []):
+        locality = str(record["center"]["locality"])
+        if locality not in compact_localities:
+            continue
+        profile = record["elementary_math_profile"]
+        primary, secondary = profile.intents[:2]
+        recheck_result = elementary_math_recheck_result(primary)
+        for section in record["sections"]:
+            key = str(section["key"])
+            if key == "direct-answer":
+                if locality in workflow_focus_localities:
+                    section["paragraphs"][-1] = naturalize_elementary_math_text(
+                        f"‘{profile.focus}’{particle_for(profile.focus, '은', '는')} "
+                        f"{primary.label} 기록에서 확인합니다. 실행일에는 변화 지점을 표시하고 "
+                        f"재확인일에는 첫 자료와 비교하세요.",
+                        profile,
+                    )
+                else:
+                    section["paragraphs"][-1] = naturalize_elementary_math_text(
+                        f"{locality}에서는 {primary.label} 자료의 위치·실행일·재확인일을 한 줄에 남깁니다. "
+                        f"재확인일에는 {recheck_result}{particle_for(recheck_result, '을', '를')} "
+                        f"첫 기록과 비교해 {secondary.label}으로 옮길지 정하세요.",
+                        profile,
+                    )
+            elif locality == "양평동" and key == "exam-strategy":
+                section["paragraphs"][-1] = (
+                    "양평동에서는 학교 교재와 짧은 새 문제에서 멈춘 위치·도움 여부·다시 시작한 지점을 "
+                    "다른 줄에 적으세요. 월요일과 목요일에 같은 질문 순서로 확인하고, 금요일에는 "
+                    "아이가 고른 복습 이유를 받아 적어 다음 상담 질문으로 사용합니다."
+                )
+            elif locality == "삼각산동" and key == "four-week-plan":
+                section["paragraphs"][-1] = (
+                    "재확인일에는 길어진 조건을 읽고 첫 식을 스스로 세운 범위를 첫 기록과 비교하세요. "
+                    "어려움이 남으면 초등 기초 확인을 더 작은 단계로 나누고, 설명이 이어지면 "
+                    "오답 원인을 표시한 새 문제로 다음 확인일을 정합니다."
+                )
+        if locality == "삼각산동":
+            def split_transition_sentence(value: object) -> object:
+                if isinstance(value, str):
+                    return value.replace(
+                        "’를 확인하고, 오답 원인·다시 풀기는",
+                        "’를 확인합니다. 오답 원인·다시 풀기는",
+                    )
+                if isinstance(value, list):
+                    return [split_transition_sentence(item) for item in value]
+                if isinstance(value, tuple):
+                    return tuple(split_transition_sentence(item) for item in value)
+                if isinstance(value, dict):
+                    return {
+                        key: split_transition_sentence(item)
+                        for key, item in value.items()
+                    }
+                return value
+
+            record["faq"] = split_transition_sentence(record["faq"])
+            record["scenarios"] = split_transition_sentence(record["scenarios"])
 
 
 def preflight(records_by_category: dict[str, list[dict[str, object]]]) -> dict[str, object]:
@@ -6325,11 +10749,13 @@ def preflight(records_by_category: dict[str, list[dict[str, object]]]) -> dict[s
     authored_blocks: dict[str, str] = {}
     faq_sets: set[str] = set()
     scenario_sets: set[str] = set()
+    elementary_english_focuses: set[str] = set()
+    elementary_math_focuses: set[str] = set()
     middle_english_focuses: set[str] = set()
     middle_math_focuses: set[str] = set()
     high_math_focuses: set[str] = set()
     specialized_slugs = {
-        "중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원",
+        "초등영어학원", "초등수학학원", "중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원",
     }
     for slug, records in records_by_category.items():
         if len(records) != EXPECTED_ROWS:
@@ -6341,7 +10767,192 @@ def preflight(records_by_category: dict[str, list[dict[str, object]]]) -> dict[s
             if not 70 <= len(meta) <= 100 or not meta.endswith((".", "요.")):
                 raise ValueError(f"invalid meta description: {title} ({len(meta)}): {meta}")
             metas.append(meta)
-            if slug == "중등영어학원":
+            if slug == "초등영어학원":
+                profile = record["elementary_english_profile"]
+                focus = str(profile.focus)
+                if focus in elementary_english_focuses:
+                    raise ValueError(
+                        f"duplicate elementary English focus: {title}: {focus}"
+                    )
+                elementary_english_focuses.add(focus)
+                if not (
+                    len(record["sections"]) == 6
+                    and len(record["faq"]) == 5
+                    and len(record["scenarios"]) == 2
+                ):
+                    raise ValueError(
+                        f"elementary English content shape mismatch: {title}"
+                    )
+                center = record["center"]
+                locality = str(center["locality"])
+                tokens = (
+                    *page_particle_tokens(
+                        CONFIG_BY_SLUG[slug],
+                        center,
+                        record["signals"],
+                        str(record["student"]),
+                    ),
+                    *elementary_english_particle_tokens(profile),
+                )
+                quick = str(record["quick"])
+                primary, secondary = profile.intents[:2]
+                quick_contract = (
+                    locality,
+                    focus,
+                    primary.evidence,
+                    primary.action,
+                    primary.checkpoint,
+                    "확인 자료:",
+                    "이번 주 행동:",
+                    "재확인 기준:",
+                )
+                if any(value not in quick for value in quick_contract):
+                    raise ValueError(
+                        f"elementary English quick answer does not fulfill its focus: {title}"
+                    )
+                workflow_terms = (
+                    ("교재", "학습지", "기록", "근거", "표시", "문장"),
+                    ("표시", "비교", "구분", "설명", "기록", "읽"),
+                    ("다음 점검", "일주일 뒤", "재확인", "다시 살", "다음 분량", "새 문장", "새 글"),
+                )
+                focus_workflow_sections = 0
+                for section in record["sections"]:
+                    section_text = clean(
+                        " ".join(
+                            [str(section["heading"]), *section["paragraphs"]]
+                        )
+                    )
+                    if focus in section_text and all(
+                        any(term in section_text for term in term_group)
+                        for term_group in workflow_terms
+                    ):
+                        focus_workflow_sections += 1
+                if focus_workflow_sections < 1:
+                    raise ValueError(
+                        f"elementary English focus workflow coverage is too thin: {title}"
+                    )
+                if any(
+                    str(section["heading"]).count("·") > 3
+                    for section in record["sections"]
+                ):
+                    raise ValueError(
+                        f"elementary English heading has excessive middle-dot joins: {title}"
+                    )
+                faq_question, faq_answer = record["faq"][3]
+                support, extra = profile.intents[2:4]
+
+                def faq_intent_present(text: str, intent: HighEnglishIntent) -> bool:
+                    if intent.label in text:
+                        return True
+                    if intent.label == "오답 원인·다시 확인":
+                        return "오답 원인" in text and bool(
+                            re.search(r"다시\s+(?:살피|살필|살핀|살펴|살폈|확인|볼)", text)
+                        )
+                    return False
+
+                if not all(
+                    faq_intent_present(faq_question, intent)
+                    and faq_intent_present(faq_answer, intent)
+                    for intent in (support, extra)
+                ):
+                    raise ValueError(
+                        "elementary English FAQ4 intent mismatch: "
+                        f"{title} / labels={support.label}|{extra.label} / "
+                        f"checks={faq_intent_present(faq_question, support)},"
+                        f"{faq_intent_present(faq_answer, support)},"
+                        f"{faq_intent_present(faq_question, extra)},"
+                        f"{faq_intent_present(faq_answer, extra)} / "
+                        f"question={faq_question} / answer={faq_answer}"
+                    )
+                authored = clean(" ".join((
+                    str(record["student"]),
+                    str(record["meta"]),
+                    str(record["quick"]),
+                    *(str(section["heading"]) for section in record["sections"]),
+                    *(
+                        str(paragraph)
+                        for section in record["sections"]
+                        for paragraph in section["paragraphs"]
+                    ),
+                    *(str(question) for question, _answer in record["faq"]),
+                    *(str(answer) for _question, answer in record["faq"]),
+                    *(str(value) for value in record["scenarios"]),
+                )))
+                # A locality is source-backed entity data, not editorial subject
+                # language.  In particular, 별내신도시 legitimately contains
+                # the substring "내신", so remove the exact locality before the
+                # subject/level vocabulary gate.
+                authored_for_contamination = authored.replace(locality, "")
+                hard_contamination = sorted(set(re.findall(
+                    r"(?:수학|국어|예비\s*고1|고등\s*(?:영어|학교|학생|과정|어휘)|(?<![0-9A-Za-z가-힣])고[1-3](?![0-9A-Za-z가-힣])|수능|모의고사|전국연합|학력평가|토익|토플|아이엘츠|성인\s*영어)",
+                    authored_for_contamination,
+                )))
+                elementary_grades = relevant_grades(
+                    CONFIG_BY_SLUG[slug], center, "영어"
+                )
+                transition_context = (
+                    locality in ELEMENTARY_ENGLISH_MIDDLE_TRANSITION_FOCUS_OVERRIDES
+                    and "초6" in elementary_grades
+                )
+                middle_contamination = sorted(set(re.findall(
+                    r"(?:예비\s*중학생|중학생|중학교|중등|(?<![0-9A-Za-z가-힣])중1(?![0-9A-Za-z가-힣])|내신)",
+                    authored_for_contamination,
+                )))
+                if hard_contamination or (
+                    middle_contamination and not transition_context
+                ):
+                    raise ValueError(
+                        f"elementary English subject/level contamination: {title}: "
+                        f"{hard_contamination + middle_contamination}"
+                    )
+            elif slug == "초등수학학원":
+                profile = record["elementary_math_profile"]
+                focus = str(profile.focus)
+                if focus in elementary_math_focuses:
+                    raise ValueError(f"duplicate elementary Math focus: {title}: {focus}")
+                elementary_math_focuses.add(focus)
+                if not (
+                    len(record["sections"]) == 6
+                    and len(record["faq"]) == 5
+                    and len(record["scenarios"]) == 2
+                ):
+                    raise ValueError(f"elementary Math content shape mismatch: {title}")
+                center = record["center"]
+                locality = str(center["locality"])
+                primary, secondary = profile.intents[:2]
+                quick = str(record["quick"])
+                for required in (
+                    focus, primary.evidence, primary.action,
+                    primary.checkpoint,
+                ):
+                    if required not in quick:
+                        raise ValueError(
+                            f"elementary Math quick answer contract mismatch: {title}: {required}"
+                        )
+                authored = clean(" ".join((
+                    str(record["student"]), str(record["meta"]), quick,
+                    *(str(section["heading"]) for section in record["sections"]),
+                    *(str(paragraph) for section in record["sections"] for paragraph in section["paragraphs"]),
+                    *(str(question) for question, _answer in record["faq"]),
+                    *(str(answer) for _question, answer in record["faq"]),
+                    *(str(value) for value in record["scenarios"]),
+                )))
+                contamination_text = authored.replace(locality, "")
+                contamination = sorted(set(re.findall(
+                    r"(?:예비\s*고1|고등학생|고등학교|고등\s*(?:영어|수학|과정)|수능|모의고사|전국연합|입시|영어\s*(?:학원|학습|문법|독해|어휘))",
+                    contamination_text,
+                )))
+                if contamination:
+                    raise ValueError(
+                        f"elementary Math subject/level contamination: {title}: {contamination}"
+                    )
+                has_transition = any(intent.code == "transition" for intent in profile.intents)
+                should_transition = locality in ELEMENTARY_MATH_TRANSITION_FOCUS_OVERRIDES
+                if has_transition != should_transition:
+                    raise ValueError(
+                        f"elementary Math transition contract mismatch: {title}: {has_transition}"
+                    )
+            elif slug == "중등영어학원":
                 profile = record["middle_english_profile"]
                 focus = str(profile.focus)
                 if focus in middle_english_focuses:
@@ -6617,14 +11228,95 @@ def main() -> None:
     records_by_category: dict[str, list[dict[str, object]]] = {}
     for config in selected:
         records_by_category[config.slug] = build_records(config, centers, load_source_rows(config), assignments[config.slug])
+    individualize_duplicate_elementary_math_sections(records_by_category)
     contextualize_duplicate_paragraphs(records_by_category)
     contextualize_duplicate_faq_answers(records_by_category)
+    individualize_duplicate_elementary_english_sections(records_by_category)
     individualize_frequent_middle_english_paragraphs(records_by_category)
     individualize_frequent_middle_english_faq_answers(records_by_category)
     individualize_duplicate_middle_english_sections(records_by_category)
     individualize_duplicate_middle_math_sections(records_by_category)
     individualize_duplicate_high_english_sections(records_by_category)
     individualize_duplicate_high_math_sections(records_by_category)
+    for record in records_by_category.get("초등영어학원", []):
+        profile = record["elementary_english_profile"]
+        tokens = (
+            *page_particle_tokens(
+                CONFIG_BY_SLUG["초등영어학원"],
+                record["center"],
+                record["signals"],
+                str(record["student"]),
+            ),
+            *elementary_english_particle_tokens(profile),
+        )
+        record["student"] = normalize_particle_joins(
+            naturalize_elementary_english_text(str(record["student"]), profile),
+            tokens,
+        )
+        # Student wording is itself one input to the page token set. Rebuild
+        # the set after that wording is final so quick-answer guidance and the
+        # preflight contract use the same particle normalization.
+        tokens = (
+            *page_particle_tokens(
+                CONFIG_BY_SLUG["초등영어학원"],
+                record["center"],
+                record["signals"],
+                str(record["student"]),
+            ),
+            *elementary_english_particle_tokens(profile),
+        )
+        record["meta"] = normalize_particle_joins(
+            naturalize_elementary_english_text(str(record["meta"]), profile),
+            tokens,
+        )
+        record["quick"] = normalize_generated_value(
+            naturalize_elementary_english_text(str(record["quick"]), profile),
+            tokens,
+        )
+        record["sections"] = normalize_generated_value(
+            naturalize_elementary_english_tree(record["sections"], profile),
+            tokens,
+        )
+        record["faq"] = normalize_generated_value(
+            naturalize_elementary_english_tree(record["faq"], profile),
+            tokens,
+        )
+        record["scenarios"] = normalize_generated_value(
+            naturalize_elementary_english_tree(record["scenarios"], profile),
+            tokens,
+        )
+    reduce_elementary_english_repeated_quotes(records_by_category)
+    for record in records_by_category.get("초등수학학원", []):
+        profile = record["elementary_math_profile"]
+        tokens = (
+            *page_particle_tokens(
+                CONFIG_BY_SLUG["초등수학학원"],
+                record["center"],
+                record["signals"],
+                str(record["student"]),
+            ),
+            *elementary_math_particle_tokens(profile),
+        )
+        record["student"] = normalize_particle_joins(
+            naturalize_elementary_math_text(str(record["student"]), profile), tokens
+        )
+        record["meta"] = normalize_particle_joins(
+            naturalize_elementary_math_text(str(record["meta"]), profile), tokens
+        )
+        record["quick"] = normalize_generated_value(
+            naturalize_elementary_math_text(str(record["quick"]), profile), tokens
+        )
+        record["sections"] = normalize_generated_value(
+            naturalize_elementary_math_tree(record["sections"], profile), tokens
+        )
+        record["faq"] = normalize_generated_value(
+            naturalize_elementary_math_tree(record["faq"], profile), tokens
+        )
+        record["scenarios"] = normalize_generated_value(
+            naturalize_elementary_math_tree(record["scenarios"], profile), tokens
+        )
+    reduce_elementary_math_repeated_quotes(records_by_category)
+    compact_overlong_elementary_math_records(records_by_category)
     for record in records_by_category.get("중등영어학원", []):
         profile = record["middle_english_profile"]
         tokens = (
@@ -6734,9 +11426,9 @@ def main() -> None:
             target = category_root / str(record["slug"]) / "index.html"
             target.parent.mkdir(parents=True, exist_ok=True)
             rendered = render_page(config, record, records[(index - 1) % len(records)], records[(index + 1) % len(records)])
-            if config.slug in {"중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"} and target.is_file():
+            if config.slug in {"초등영어학원", "초등수학학원", "중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"} and target.is_file():
                 rendered = preserve_high_english_center_schema(rendered, target.read_text(encoding="utf-8"))
-            if config.slug in {"중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"}:
+            if config.slug in {"초등영어학원", "초등수학학원", "중등영어학원", "중등수학학원", "고등영어학원", "고등수학학원"}:
                 rendered, toc_count = add_anchor_toc(rendered)
                 if toc_count != 9:
                     raise ValueError(f"{target}: expected 9 anchor targets, found {toc_count}")
