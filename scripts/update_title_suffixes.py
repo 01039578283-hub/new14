@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize every published page to the approved SEO title suffix."""
+"""Legacy title utilities; CLI now applies the body-based title personalizer."""
 
 from __future__ import annotations
 
@@ -62,26 +62,13 @@ def invalid_social_titles(source: str) -> list[str]:
 
 
 def main() -> None:
-    files = sorted(
-        path for path in ROOT.rglob("*.html")
-        if ".vercel" not in path.parts and ".git" not in path.parts
-    )
-    changed = 0
-    failures: list[str] = []
-    for path in files:
-        source = path.read_text(encoding="utf-8")
-        updated = update_document(source)
-        if updated != source:
-            path.write_text(updated, encoding="utf-8", newline="\n")
-            changed += 1
-        if not title_value(updated).endswith(f" | {TITLE_SUFFIX}"):
-            failures.append(str(path.relative_to(ROOT)))
-        for key in invalid_social_titles(updated):
-            failures.append(str(path.relative_to(ROOT)) + f" ({key})")
+    """Keep the old entry point from restoring the former shared suffix."""
+    import subprocess
+    import sys
 
-    if failures:
-        raise SystemExit("title suffix validation failed:\n" + "\n".join(failures[:20]))
-    print(f"validated={len(files)} changed={changed} suffix={TITLE_SUFFIX}")
+    helper = ROOT / "tools" / "personalize_title_suffixes.py"
+    args = sys.argv[1:] or ["--write"]
+    raise SystemExit(subprocess.call([sys.executable, str(helper), *args], cwd=ROOT))
 
 
 if __name__ == "__main__":

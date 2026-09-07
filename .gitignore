@@ -5,3 +5,8 @@ __pycache__/
 scripts/_*.json
 scripts/_*.png
 _direct-file-mobile.png
+
+tools/__pycache__/
+tools/reports/*
+!tools/reports/title-suffix-audit.json
+!tools/reports/title-suffix-local-verification.json
