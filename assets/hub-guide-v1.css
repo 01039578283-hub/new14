@@ -1,0 +1,78 @@
+/* Hub-only additions: retain site14's paper, ink and blue editorial identity. */
+.hub-enhanced-page .hub-wrap { width:min(calc(100% - 40px),1180px); margin-inline:auto; }
+.hub-enhanced-page .directory-hero h1 { font-size:clamp(29px,4vw,46px); line-height:1.35; max-width:28ch; }
+.hub-enhanced-page .directory-hero > .site-shell > p:last-of-type { font-size:17px; line-height:1.85; max-width:850px; }
+.hub-enhanced-page .hub-guide { padding:52px 0; border-top:1px solid var(--line); }
+.hub-enhanced-page .hub-guide:nth-of-type(even) { background:var(--white); }
+.hub-guide-heading { max-width:880px; margin-bottom:26px; }
+.hub-enhanced-page .hub-guide h2 { margin:0; font-size:clamp(24px,3vw,33px); letter-spacing:-.035em; line-height:1.4; }
+.hub-enhanced-page .hub-guide h3 { margin:16px 0 12px; font-size:21px; line-height:1.5; letter-spacing:-.03em; }
+.hub-enhanced-page .hub-guide p { font-size:16px; line-height:1.85; color:var(--ink-soft); }
+.hub-enhanced-page .hub-guide .eyebrow { color:var(--blue); font-size:12px; font-weight:850; letter-spacing:.1em; margin:0 0 10px; }
+.hub-enhanced-page .hub-guide .hub-guide-note { font-size:14px; line-height:1.75; }
+.hub-guide-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.hub-guide-card { min-width:0; padding:26px; border:1px solid var(--ink); background:var(--white); }
+.hub-guide-number { display:inline-grid; place-items:center; width:36px; height:36px; background:var(--blue); color:white; font-size:13px; font-weight:850; box-shadow:3px 3px 0 var(--ink); }
+.hub-guide-jumps { padding:22px 0; }
+.hub-guide-jumps .hub-wrap { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
+.hub-guide-jumps a { display:flex; align-items:center; justify-content:center; text-align:center; min-height:48px; padding:10px 8px; border:1px solid var(--ink); color:var(--blue); background:var(--white); font-size:14px; font-weight:800; line-height:1.5; }
+.hub-guide-reading { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+.hub-guide-reading a,.hub-center-card > a { display:inline-flex; gap:10px; align-items:center; min-height:48px; padding:10px 14px; border:1px solid var(--blue); background:var(--blue-soft); color:var(--ink); font-size:15px; font-weight:800; line-height:1.5; }
+.hub-center-card { display:flex; flex-direction:column; }
+.hub-center-card dl { margin:0 0 24px; }
+.hub-center-card dt { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; font-size:13px; color:var(--ink-soft); font-weight:800; }
+.hub-center-card dd { margin:4px 0 0; font-size:15px; line-height:1.75; overflow-wrap:anywhere; }
+.hub-center-card > a { margin-top:auto; justify-content:space-between; }
+.hub-guide-gallery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; align-items:start; }
+.hub-guide-gallery figure { margin:0; min-width:0; }
+.hub-guide-gallery img { width:100%; height:auto; max-height:none; object-fit:contain; border:1px solid var(--line); }
+.hub-guide-gallery figcaption { margin-top:12px; font-size:14px; color:var(--ink-soft); line-height:1.7; }
+.hub-guide-faq details { border:1px solid var(--ink); margin-top:12px; background:var(--white); }
+.hub-guide-faq summary { cursor:pointer; min-height:56px; padding:17px 20px; font-size:16px; font-weight:800; line-height:1.7; }
+.hub-enhanced-page .hub-guide-faq details p { padding:0 20px 20px; margin:0; }
+.hub-enhanced-page [id] { scroll-margin-top:120px; }
+.hub-enhanced-page .primary-nav a { min-height:44px; display:flex; align-items:center; justify-content:center; }
+.hub-enhanced-page .directory-toolbar { position:static; }
+.hub-enhanced-page .directory-search input { font-size:16px; min-height:48px; min-width:0; }
+.hub-enhanced-page .directory-search span { font-size:14px; }
+.hub-enhanced-page .region-filters { display:flex; flex-wrap:wrap; gap:8px; }
+.hub-enhanced-page .region-filters button,.hub-enhanced-page .directory-actions button { min-height:44px; padding:10px 14px; font-size:14px; line-height:1.5; }
+.hub-enhanced-page .directory-card { min-height:74px; }
+.hub-enhanced-page .directory-card strong { line-height:1.5; }
+.hub-enhanced-page .directory-card span { font-size:13px; line-height:1.6; }
+.hub-enhanced-page .hub-metrics span { font-size:13px; }
+.hub-enhanced-page .subject-hub-card { min-height:310px; padding:24px 24px 84px; }
+.hub-enhanced-page .subject-hub-card h3 { font-size:28px; line-height:1.35; margin-top:30px; }
+.hub-enhanced-page .subject-hub-card p { font-size:16px; line-height:1.75; }
+@media (max-width:979px) {
+ .hub-guide-grid { grid-template-columns:1fr; }
+ .hub-guide-jumps .hub-wrap { grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .hub-enhanced-page .hub-guide { padding:36px 0; }
+ .hub-enhanced-page .section { padding-block:40px; }
+ .hub-guide-card { padding:22px; }
+ .hub-enhanced-page .hub-guide h3 { font-size:20px; }
+ .hub-enhanced-page .header-inner { grid-template-columns:1fr; }
+ .hub-enhanced-page .primary-nav { width:100%; justify-self:stretch; }
+ .hub-enhanced-page .primary-nav a { font-size:13px; padding:8px 2px; white-space:normal; line-height:1.5; text-align:center; }
+ .hub-enhanced-page [id] { scroll-margin-top:145px; }
+}
+@media (max-width:560px) {
+ .hub-enhanced-page .directory-hero { padding:30px 0; }
+ .hub-enhanced-page .directory-hero > .site-shell > p:last-of-type { font-size:16px; }
+ .hub-guide-jumps .hub-wrap { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .hub-guide-gallery { grid-template-columns:1fr; }
+ .hub-guide-reading { display:grid; grid-template-columns:1fr; }
+ .hub-enhanced-page .hub-metrics { grid-template-columns:1fr; }
+ .hub-enhanced-page .hub-metrics div { padding:14px; }
+ .hub-enhanced-page .directory-toolbar { padding:16px 12px; }
+ .hub-enhanced-page .directory-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .hub-enhanced-page .directory-card { padding:12px 22px 12px 10px; }
+ .hub-enhanced-page .directory-card strong { font-size:15px; }
+ .hub-guide-faq summary { padding:16px; }
+ .hub-enhanced-page .hub-guide-faq details p { padding:0 16px 18px; }
+}
+@media (max-width:1399px) {
+ .hub-enhanced-page { padding-bottom:88px; }
+ .hub-enhanced-page .contact-dock { left:10px; right:10px; bottom:10px; width:auto; max-width:480px; margin-inline:auto; grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .hub-enhanced-page .contact-dock a { min-width:0; min-height:48px; padding:10px 4px; font-size:13px; line-height:1.5; text-align:center; }
+}
