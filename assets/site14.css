@@ -900,3 +900,11 @@ h1, h2, h3, p { margin-top: 0; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* 2026-09-15: shared mobile navigation, including existing locality pages. */
+@media (max-width: 699px) {
+  .site-header .site-shell { width: calc(100% - 24px); max-width: calc(100vw - 24px); }
+  .site-header .primary-nav { grid-template-columns: .4fr 1fr 1fr 1fr 1.4fr; gap: 2px; padding: 3px; }
+  .site-header .primary-nav a { min-height: 46px; padding: 8px 2px; font-size: 13px; line-height: 1.45; letter-spacing: -.02em; }
+  .contact-dock a { min-height: 48px; font-size: 14px; line-height: 1.5; }
+}
