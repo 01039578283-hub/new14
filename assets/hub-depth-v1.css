@@ -1,0 +1,37 @@
+/* Subject hub reading aids; no changes to locality pages or shared layouts. */
+.hub-depth-scenarios { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.hub-depth-card { min-width:0; padding:24px; border:1px solid var(--ink); background:var(--white); }
+.hub-depth-card h3 { margin:14px 0 20px; }
+.hub-depth-card dl { margin:0; }
+.hub-depth-card dt { margin:18px 0 6px; color:var(--blue); font-size:14px; font-weight:800; line-height:1.6; }
+.hub-depth-card dd { margin:0; font-size:16px; line-height:1.85; color:var(--ink-soft); word-break:keep-all; overflow-wrap:anywhere; }
+.hub-depth-card dt:first-child { margin-top:0; }
+.hub-depth-card .hub-depth-check { padding-top:14px; border-top:1px solid var(--line); }
+.hub-depth-example { padding:28px; border:1px solid var(--ink); background:var(--white); max-width:920px; }
+.hub-depth-example h3 { margin:0 0 16px!important; }
+.hub-depth-example dl { margin:0; display:grid; gap:18px; }
+.hub-depth-example dt { color:var(--blue); font-size:14px; font-weight:800; margin-bottom:7px; line-height:1.6; }
+.hub-depth-example dd { margin:0; font-size:17px; line-height:1.85; white-space:pre-line; overflow-wrap:anywhere; }
+.hub-depth-response { padding:20px; background:var(--blue-soft); border-left:3px solid var(--blue); }
+.hub-depth-preparation { margin:24px 0; padding:0; list-style:none; counter-reset:prep; display:grid; gap:12px; max-width:920px; }
+.hub-depth-preparation li { counter-increment:prep; display:grid; grid-template-columns:32px minmax(0,1fr); gap:14px; padding:20px; background:var(--white); border:1px solid var(--line); font-size:16px; line-height:1.85; word-break:keep-all; overflow-wrap:anywhere; }
+.hub-depth-preparation li::before { content:counter(prep,decimal-leading-zero); color:var(--blue); font-size:14px; font-weight:850; }
+.hub-depth-related { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:24px; }
+.hub-depth-related a { display:block; border:1px solid var(--line); padding:18px 20px; background:var(--white); min-height:48px; text-decoration:none; }
+.hub-depth-related strong { display:block; color:var(--blue); font-size:16px; line-height:1.6; }
+.hub-depth-related span { display:block; margin-top:8px; font-size:15px; line-height:1.8; color:var(--ink-soft); }
+.hub-depth-related a:hover { border-color:var(--blue); background:var(--blue-soft); }
+[data-hub-depth] a:focus-visible,[data-hub-depth] summary:focus-visible { outline:3px solid var(--blue); outline-offset:4px; }
+@media(max-width:979px) {
+  .hub-depth-scenarios { grid-template-columns:minmax(0,1fr); }
+  .hub-depth-card { padding:22px; }
+}
+@media(max-width:560px) {
+  .hub-depth-example { padding:20px 16px; }
+  .hub-depth-example dd { font-size:16px; }
+  .hub-depth-response { padding:16px 14px; }
+  .hub-depth-card { padding:20px 18px; }
+  .hub-depth-related { grid-template-columns:minmax(0,1fr); }
+  .hub-depth-preparation li { padding:18px 14px; grid-template-columns:24px minmax(0,1fr); gap:10px; }
+  [data-hub-depth] .hub-guide-heading { margin-bottom:20px; }
+}
