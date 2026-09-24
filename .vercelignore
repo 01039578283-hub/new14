@@ -7,3 +7,6 @@ tools/
 .vercel
 .git
 scripts/__pycache__/
+.public-release/
+reports/
+PROJECT_HANDOFF.md

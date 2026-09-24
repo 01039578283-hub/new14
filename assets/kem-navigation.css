@@ -1,0 +1,8 @@
+/* One shared six-item navigation; existing article typography is untouched. */
+.site-header .primary-nav{grid-template-columns:repeat(6,minmax(0,1fr));width:min(690px,100%)}
+.site-header .primary-nav a{min-height:46px;font-size:13px;line-height:1.45;letter-spacing:-.02em}
+.kd-branch-teaser{padding:26px;margin-block:32px;border:1px solid var(--line);border-left:4px solid var(--blue);background:var(--white);color:var(--ink)}
+.kd-branch-teaser h2{font-size:23px;line-height:1.4;margin:0 0 12px;letter-spacing:-.025em}
+.kd-branch-teaser p{font-size:16px;line-height:1.85;margin:8px 0}
+.kd-branch-teaser a{display:inline-flex;min-height:46px;align-items:center;padding:10px 16px;background:var(--ink);color:var(--white);margin-top:12px;font-weight:750}
+@media(max-width:699px){.site-header .primary-nav{grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:3px}.site-header .primary-nav a{padding:8px 5px;font-size:14px}.kd-branch-teaser{padding:22px 18px}.kd-branch-teaser h2{font-size:21px}}

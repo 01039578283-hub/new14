@@ -1,4 +1,5 @@
 .vercel
+.public-release/
 .env*
 __pycache__/
 *.py[cod]
