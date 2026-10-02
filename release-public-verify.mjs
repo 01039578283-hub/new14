@@ -8,6 +8,10 @@ export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs'
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const normalize=bytes=>Buffer.from(bytes.toString('utf8').replaceAll('\r\n','\n'));
 const readJSON=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
+// Deployment providers may reserialize JSON. Preserve every config value and
+// array order while ignoring only whitespace and object-key ordering.
+const orderedJSON=value=>Array.isArray(value)?value.map(orderedJSON):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,orderedJSON(value[key])])):value;
+export const configDigest=bytes=>digest(Buffer.from(JSON.stringify(orderedJSON(JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/,''))))));
 const siteOrigin='https://xn--3e0bz50b1zcyxat54c.com';
 const tracker='<script defer src="https://wawa-visit-collector.clean-peach-8202.chatgpt.site/tracker.js" data-site="wawa-15" crossorigin="anonymous" referrerpolicy="no-referrer"></script>';
 
@@ -16,7 +20,10 @@ export function verifyBuildInputs(root,manifest=readJSON(path.join(root,'release
   if(!reviewed||Object.keys(reviewed).sort().join('\n')!==[...BUILD_INPUTS].sort().join('\n'))throw Error('Reviewed build inputs are missing or incomplete; regenerate and review the release manifest');
   for(const name of BUILD_INPUTS) {
     const bytes=fs.readFileSync(path.join(root,name));
-    if(!Buffer.from(bytes.toString('utf8')).equals(bytes)||digest(normalize(bytes))!==reviewed[name])throw Error('Reviewed build input changed: '+name);
+    if(!Buffer.from(bytes.toString('utf8')).equals(bytes))throw Error('Non-UTF8 reviewed build input: '+name);
+    if(digest(normalize(bytes))===reviewed[name])continue;
+    if(name==='vercel.json'&&manifest.reviewedVercelConfigSha256&&configDigest(bytes)===manifest.reviewedVercelConfigSha256)continue;
+    throw Error('Reviewed build input changed: '+name);
   }
   return BUILD_INPUTS.length;
 }

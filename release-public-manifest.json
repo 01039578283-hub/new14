@@ -18893,8 +18893,9 @@
     "release-public-build.mjs": "c34c7399e12971ccb68e66c196f51d169e77dc3e130b93675d4f01270ffd1d66",
     "wawa-analytics-build.mjs": "094e86ff71fc31675d12dcdf73f5bb9c87efcc4972843188e32092a1507b948d",
     "seo-descriptions.mjs": "23ab1a28da947f9ff3baeea6b032be94a842863d87295324071e1a32c8280fac",
-    "release-public-verify.mjs": "8132253f8093173c4d704622c66779b28840d1bea52e59a6232168b625a42373",
+    "release-public-verify.mjs": "329a6070ff584d57b08cc252858bd71a584447db6e970c7bbb5ac3775418f728",
     "seo-descriptions.json": "e06e0a28b56d355ed096cd2aad6bf6eb859c8e9e2c24a34e0a7f467e37c98d6a",
     "vercel.json": "66b723269fb81fbe0cafe84a40456362ed8276dfbc8fe6618942205246b2ce26"
-  }
+  },
+  "reviewedVercelConfigSha256": "729730d1f76e587e2e771f9f8f7849d460b2a11b1c435d522f8e76d59f987789"
 }
