@@ -1,0 +1,60 @@
+.cu-page {--cu-green:#176b58;--cu-light:#e5f1eb}
+.cu-shell {width:min(1060px,calc(100% - 40px));margin-inline:auto;min-width:0}
+.cu-hero {padding:34px 0 38px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,#e5f1eb,#f7f3ec 74%)}
+.cu-hero h1 {font-size:clamp(29px,4vw,48px);line-height:1.28;letter-spacing:-.045em;max-width:850px;margin:14px 0 20px}
+.cu-hero p {max-width:790px;margin:12px 0}
+.cu-crumbs {display:flex;flex-wrap:wrap;gap:5px 12px;font-size:13px;color:var(--ink-soft)}
+.cu-crumbs a {text-decoration:underline;text-underline-offset:3px;min-height:32px;display:flex;align-items:center}
+.cu-kicker {font-weight:800;color:var(--cu-green);font-size:14px}
+.cu-tag {color:var(--cu-green);font-weight:800;font-size:13px;margin:0 0 10px}
+.cu-note {font-size:14px;color:var(--ink-soft)}
+.cu-section {margin:36px 0;scroll-margin-top:160px}
+.cu-section h2 {font-size:clamp(22px,3vw,29px);line-height:1.4;letter-spacing:-.035em;margin:0 0 16px}
+.cu-section h3 {font-size:20px;line-height:1.5;margin:0 0 12px}
+.cu-section p,.cu-section li {line-height:1.85}
+.cu-callout {background:var(--cu-light);border-left:4px solid var(--cu-green);padding:20px 24px;border-radius:0 14px 14px 0;margin:20px 0}
+.cu-callout p:first-child {margin-top:0}.cu-callout p:last-child {margin-bottom:0}
+.cu-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.cu-card {border:1px solid var(--line);border-radius:18px;padding:24px;background:var(--white);min-width:0;display:flex;flex-direction:column}
+.cu-card h3 {margin:0 0 14px;font-size:21px;line-height:1.4}
+.cu-card p {margin:0 0 16px}.cu-card .cu-tag {font-size:13px;margin-bottom:12px}
+.cu-card h3 a {text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
+.cu-card .cu-open {margin-top:auto;color:var(--cu-green);font-weight:800;min-height:44px;display:flex;align-items:center;padding-top:8px}
+.cu-links {display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.cu-links a,.cu-button {min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border:1px solid var(--line);border-radius:10px;background:var(--white);font-size:15px;font-weight:750;line-height:1.5;text-align:left;max-width:100%;cursor:pointer}
+.cu-links a:hover,.cu-card h3 a:hover {color:var(--cu-green)}
+.cu-button.cu-primary {background:var(--cu-green);border-color:var(--cu-green);color:white}
+.cu-links a:focus-visible,.cu-button:focus-visible,.cu-card a:focus-visible {outline:3px solid var(--blue);outline-offset:3px}
+.cu-article {max-width:860px;margin-inline:auto}
+.cu-toc {padding:20px 24px;border:1px solid var(--line);background:var(--white);border-radius:14px;margin:28px 0}
+.cu-toc ol {margin-bottom:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 28px;padding-left:24px}
+.cu-toc a {text-decoration:underline;text-underline-offset:3px}
+.cu-steps {list-style:none;padding:0;margin:18px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;counter-reset:cu-step}
+.cu-steps li {counter-increment:cu-step;display:flex;align-items:flex-start;gap:12px;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--white);min-width:0}
+.cu-steps li:before {content:counter(cu-step);flex:0 0 28px;display:grid;place-items:center;height:28px;color:white;background:var(--cu-green);border-radius:50%;font-weight:800}
+.cu-level {border:1px solid var(--line);border-radius:18px;padding:24px;margin:18px 0;background:var(--white);scroll-margin-top:160px}
+.cu-level dl,.cu-course dl {margin:0}.cu-level dt,.cu-course dt {font-weight:800;color:var(--cu-green);margin-top:18px}.cu-level dd,.cu-course dd {margin:6px 0 0}
+.cu-level dd ol {padding-left:22px;margin:8px 0}.cu-level dd li {margin:6px 0}
+.cu-facts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0;list-style:none}
+.cu-facts li {border:1px solid var(--line);border-radius:12px;background:var(--white);padding:18px}
+.cu-facts strong {display:block;margin-bottom:8px;color:var(--cu-green)}
+.cu-section details {padding:16px 18px;border:1px solid var(--line);border-radius:12px;margin:12px 0;background:var(--white)}
+.cu-section summary {font-weight:800;cursor:pointer;min-height:44px;display:list-item;padding:7px 0}
+.cu-section summary:focus-visible {outline:3px solid var(--blue)}
+.cu-filters {display:grid;grid-template-columns:1.5fr repeat(3,minmax(0,1fr));gap:14px;background:var(--white);border:1px solid var(--line);border-radius:18px;padding:22px;margin:20px 0}
+.cu-filters label {display:block;font-size:14px;font-weight:800;margin-bottom:8px}
+.cu-filters input,.cu-filters select {width:100%;min-width:0;min-height:48px;border:1px solid #aab6c3;border-radius:8px;background:white;color:var(--ink);padding:9px 12px;font:inherit}
+.cu-actions {display:flex;gap:10px;flex-wrap:wrap;grid-column:1/-1}
+.cu-status {font-weight:750;color:var(--cu-green)}
+.cu-empty {padding:22px;border:1px dashed var(--cu-green);border-radius:14px;margin:18px 0}
+.cu-course {background:var(--white);border:1px solid var(--line);border-radius:16px;padding:24px;margin:20px 0;scroll-margin-top:160px}
+.cu-sources a {text-decoration:underline;text-underline-offset:3px}.cu-sources li {margin:8px 0}
+.cu-connection {margin-block:40px;padding:26px;border:1px solid var(--line);border-radius:18px;background:#e5f1eb}
+.cu-connection h2 {font-size:24px;line-height:1.45;margin:0 0 12px}.cu-connection p {max-width:850px;margin:0;line-height:1.8}
+.cu-connection .cu-links {margin-top:18px}
+@media(min-width:700px) {.cu-shell,.cu-connection.site-shell {width:min(1040px,calc(100% - 210px));max-width:calc(100vw - 210px);margin-left:max(20px,calc((100% - 1200px)/2));margin-right:190px}}
+@media(max-width:899px) {.cu-grid {grid-template-columns:repeat(2,minmax(0,1fr))}.cu-filters {grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:699px) {.cu-section,.cu-level,.cu-course {scroll-margin-top:250px}.cu-hero {padding:24px 0 30px}.cu-toc ol,.cu-grid,.cu-steps,.cu-facts {grid-template-columns:1fr}.cu-card,.cu-level,.cu-course {padding:20px}.cu-connection {padding:20px}.cu-links {flex-direction:column;align-items:stretch}.cu-filters {padding:18px;gap:12px}.cu-filters>div:first-child {grid-column:1/-1}.cu-filters>div:nth-child(4) {grid-column:1/-1}.cu-callout {padding:18px}.cu-section {margin-block:28px}}
+@media(max-width:359px) {.cu-shell {width:calc(100% - 32px)}.cu-filters {grid-template-columns:1fr}.cu-filters>div {grid-column:1/-1}.cu-hero h1 {font-size:29px}}
+@media(prefers-reduced-motion:reduce) {html:has(.cu-page) {scroll-behavior:auto}}
+@media print {.cu-filters,.cu-connection,.contact-dock {display:none}.cu-hero {background:none}.cu-card,.cu-level,.cu-course {break-inside:avoid}.cu-page {padding-bottom:0}}

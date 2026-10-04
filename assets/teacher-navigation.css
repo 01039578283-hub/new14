@@ -1,0 +1,15 @@
+/* Nine shared menu items; preserve visible navigation and keyboard focus. */
+body .site-header nav.primary-nav[aria-label="주요 메뉴"] {grid-template-columns:repeat(9,minmax(0,1fr));width:min(930px,100%)}
+body .site-header nav.primary-nav[aria-label="주요 메뉴"] a {min-height:44px;font-size:13px;line-height:1.45;letter-spacing:-.025em;white-space:normal;padding:8px 4px}
+body .site-header nav.primary-nav[aria-label="주요 메뉴"] a:focus-visible {outline:3px solid var(--blue);outline-offset:2px;box-shadow:0 0 0 5px var(--white)}
+@media(min-width:700px) and (max-width:979px) {
+ body .site-header .header-inner {grid-template-columns:1fr;gap:8px}
+ body .site-header nav.primary-nav[aria-label="주요 메뉴"] {width:100%;justify-self:stretch}
+}
+@media(max-width:699px) {
+ body .site-header nav.primary-nav[aria-label="주요 메뉴"] {grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:3px;padding:5px;overflow:visible}
+ body .site-header nav.primary-nav[aria-label="주요 메뉴"] a {grid-column:auto;font-size:13px;padding:8px 3px;min-height:44px}
+ body main [id],body.sw-page main [id] {scroll-margin-top:250px}
+}
+@media(max-width:359px) {body .site-header nav.primary-nav[aria-label="주요 메뉴"] a {font-size:12px;padding-inline:2px}}
+@media(forced-colors:active) {body .site-header nav.primary-nav[aria-label="주요 메뉴"] a:focus-visible {outline-color:Highlight;box-shadow:none}}
