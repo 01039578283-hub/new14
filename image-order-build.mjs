@@ -64,15 +64,23 @@ export function mediaContext(root,manifest){
   if(!representatives.length)throw Error('No reviewed representative assets');
   const reviewFile=path.join(root,'image-order-review.json');
   const review=fs.existsSync(reviewFile)?JSON.parse(fs.readFileSync(reviewFile,'utf8')):{missingMaps:[]};
-  return {root,names:new Set(names),representatives,missingMaps:new Set(review.missingMaps)};
+  const matchedMaps=review.matchedMaps||{};
+  for(const [name,asset] of Object.entries(matchedMaps)){
+    if(!targetPage(name)||!names.includes(name)||!names.includes(asset.src.replace(/^\//,'')))throw Error('Unreviewed map page or asset: '+name);
+    if(![asset.width,asset.height,asset.panelBottom].every(Number.isInteger)||asset.width<=0||asset.panelBottom<=0||asset.panelBottom>asset.height)throw Error('Invalid reviewed map dimensions: '+name);
+  }
+  return {root,names:new Set(names),representatives,missingMaps:new Set(review.missingMaps),matchedMaps};
 }
 export function normalizeMediaHTML(source,name,context){
   if(!targetPage(name))return {html:source,changed:false};
   if(source.includes('data-image-order="sequence-v1"'))return {html:source,changed:false};
   const nodes=parseHTML(source),images=nodes.filter(n=>n.tag==='img'&&ancestors(n).some(p=>p.tag==='main'));
   const bodies=images.filter(n=>imageRole(n)==='body'),maps=images.filter(n=>imageRole(n)==='map');
+  const reviewedMap=context.matchedMaps?.[name];
+  if(reviewedMap&&(!plain(source).includes(reviewedMap.address)||!plain(source).includes(reviewedMap.center)))throw Error('Reviewed map does not match the page address: '+name);
+  if(reviewedMap&&maps.length)throw Error('Existing map must be reviewed before replacement: '+name);
   if(bodies.length>1||maps.length>1)throw Error('Multiple body/map images need review: '+name+' '+bodies.length+'/'+maps.length);
-  if(!maps.length&&!context.missingMaps.has(name))throw Error('Missing mapped image; refusing an unrelated replacement: '+name);
+  if(!maps.length&&!reviewedMap&&!context.missingMaps.has(name))throw Error('Missing mapped image; refusing an unrelated replacement: '+name);
   const body=bodies[0],map=maps[0],repImages=nodes.filter(n=>n.tag==='img'&&imageRole(n)==='representative');
   const h1=nodes.find(n=>n.tag==='h1'),label=h1?plain(source.slice(h1.openEnd,h1.closeStart)):'학습 안내';
   const selected=repImages[0];
@@ -89,7 +97,9 @@ export function normalizeMediaHTML(source,name,context){
     bodyHTML='<figure class="ordered-body"><img data-media-role="body" src="/'+asset+'" alt="'+esc(label+' 본문 학습 안내')+'" width="918" height="16116" loading="lazy" decoding="async"></figure>';
     addedBody=true;
   }
-  const mapBlock=map?blockFor(map):undefined,mapHTML=mapBlock?markImage(source.slice(mapBlock.start,mapBlock.end),'map'):'';
+  const mapBlock=map?blockFor(map):undefined;
+  const mapHTML=mapBlock?markImage(source.slice(mapBlock.start,mapBlock.end),'map'):reviewedMap?
+    '<figure class="ordered-map" data-map-status="matched" style="max-width:'+reviewedMap.width+'px"><div style="position:relative;overflow:hidden;aspect-ratio:'+reviewedMap.width+'/'+reviewedMap.panelBottom+'"><img data-media-role="map" src="'+esc(reviewedMap.src)+'" alt="'+esc(label+' · '+reviewedMap.center+' 지도')+'" width="'+reviewedMap.width+'" height="'+reviewedMap.height+'" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;max-height:none"></div><figcaption>'+esc(reviewedMap.center+' · '+reviewedMap.address)+'<br>'+esc(reviewedMap.floor)+'</figcaption></figure>':'';
   // A facility photo previously labelled as body remains available after the map.
   const photo=!body?images.find(n=>imageRole(n)==='other'&&/본문/.test(n.attrs.alt||'')):undefined;
   const photoBlock=photo?blockFor(photo):undefined;
@@ -98,7 +108,7 @@ export function normalizeMediaHTML(source,name,context){
   const unique=[...new Set(blocks)].filter(a=>!blocks.some(b=>b!==a&&b.start<=a.start&&b.end>=a.end));
   const anchor=body?blockFor(body):photoBlock||mapBlock||(selected?blockFor(selected):undefined);
   if(!anchor)throw Error('No safe media insertion anchor: '+name);
-  const replacement='<div class="ordered-image-sequence" data-image-order="sequence-v1"'+(!map?' data-map-status="unconfirmed"':'')+'>'+rep+bodyHTML+mapHTML+photoHTML+'</div>';
+  const replacement='<div class="ordered-image-sequence" data-image-order="sequence-v1"'+(!map&&!reviewedMap?' data-map-status="unconfirmed"':'')+'>'+rep+bodyHTML+mapHTML+photoHTML+'</div>';
   const edits=unique.map(b=>({start:b.start,end:b.end,value:b===anchor?replacement:''}));
   // Preserve each disclosure's content and IDs while removing its image-view button.
   const gates=[...new Set([...(body?ancestors(body):[]),...(map?ancestors(map):[]),...(photo?ancestors(photo):[]),...ancestors(anchor)].filter(n=>n.tag==='details'))];
@@ -111,7 +121,7 @@ export function normalizeMediaHTML(source,name,context){
   let last=source.length,html=source;
   for(const edit of edits){if(edit.end>last)throw Error('Overlapping media changes: '+name);html=html.slice(0,edit.start)+edit.value+html.slice(edit.end);last=edit.start;}
   html=html.replace(/<\/head\s*>/i,STYLE+'$&');
-  return {html,changed:html!==source,addedBody,addedRepresentative:!selected,unfolded:gates.length,missingMap:!map};
+  return {html,changed:html!==source,addedBody,addedRepresentative:!selected,unfolded:gates.length,missingMap:!map&&!reviewedMap};
 }
 export function normalizeDirectory(root,output){
   const manifest=JSON.parse(fs.readFileSync(path.join(root,'release-public-manifest.json'),'utf8'));

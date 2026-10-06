@@ -10078,7 +10078,8 @@
     "학습커리큘럼/초등/6학년/수학/index.html": "dcb4f342eee679209bb118d74b445d484cf5f5ae87e4cc9a45a9ecd72e396b70",
     "학습커리큘럼/초등/6학년/영어/index.html": "22281b1769b68ecf41e207988c5f2b4745db194c76a24a7d1d3e087617e4d75d",
     "학습커리큘럼/초등/index.html": "2b7359a63ce22a3b5ae34f3e9e47199f1556d643f2a7e10dcaa778736ea7163d",
-    "학원소개/index.html": "a85eb22310685aaed603229a82e8c55223477e7115299fc99d9dfcc48a0b9f62"
+    "학원소개/index.html": "a85eb22310685aaed603229a82e8c55223477e7115299fc99d9dfcc48a0b9f62",
+    "assets/centers/maps/yeomchang-address-verified-20261006.jpg": "8fdecaebfece8c191721892e2af6d4d4ca0599b2c2bf7dc50eaf684edbd4b7fc"
   },
   "textSha256": {
     "404.html": "03c6b0e239615bf5d52a8398c8bada7a4ae933f1f164b46bce68b61ef9047f15",
@@ -15241,8 +15242,8 @@
     "release-public-verify.mjs": "febe8e5b38152cfa7fcc8cfaa031bd51a3fd455ee1075148366f692b29c8df3f",
     "seo-descriptions.json": "5a95d9e34621e98805b072bd7f782a3424d739244de3a1a39290c3096d7b7bc4",
     "vercel.json": "62e2565eac8a89a8b87164bd8a30398c0fc4d6f86ea92ce4dddc4d6f91b99da4",
-    "image-order-build.mjs": "5df37edccdf9c937edc97d37986d0fc3af9a5c39c3e148169ea1916a25c95cef",
-    "image-order-review.json": "d803b43b87d00c6483a6127768574285f2265d6218f90f81ef93bc3000e80372"
+    "image-order-build.mjs": "363d065d92189ad97b9d836d1e4d51c33d89237e080ce727dba7ff39c2addf3e",
+    "image-order-review.json": "a8abaacc239cfea21fd8c9e512c1fd6d50d5ad99cffb0ebcbb30552e24a9671d"
   },
   "reviewedVercelConfigSha256": "202d86f11a64836fb31121350667ab4ddf0af0d8205288ec14ed6faff37de6f9",
   "previousReviewedUpdate": {
