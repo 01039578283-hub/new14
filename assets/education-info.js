@@ -3,6 +3,8 @@
   const form = document.querySelector('[data-ei-filters]');
   if (form) {
     const cards = [...document.querySelectorAll('[data-ei-card]')];
+    const educationCount = cards.filter(card => card.dataset.kind === '교육정보').length;
+    const guideCount = cards.filter(card => card.dataset.kind === '학습가이드').length;
     const fields = Object.fromEntries(['q', 'kind', 'category'].map(key => [key, form.elements.namedItem(key)]));
     const status = document.querySelector('[data-ei-status]');
     const empty = document.querySelector('[data-ei-empty]');
@@ -24,7 +26,7 @@
         card.hidden = !match;
         if (match) count++;
       }
-      status.textContent = `전체 ${cards.length}편 중 ${count}편 · 교육정보 30편과 기존 학습가이드 60편`;
+      status.textContent = `전체 ${cards.length}편 중 ${count}편 · 교육정보 ${educationCount}편과 학습가이드 ${guideCount}편`;
       empty.hidden = count !== 0;
       if (mode) {
         const url = new URL(location.href);

@@ -22,7 +22,7 @@
 .ei-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .ei-card{display:flex;flex-direction:column;min-width:0;padding:22px;border:1px solid var(--line);background:var(--white)}
 .ei-card h3{font-size:21px;line-height:1.55;letter-spacing:-.03em;margin:12px 0}
-.ei-card h3 a{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+.ei-card h3 a{display:block;min-height:44px;color:var(--ink);text-decoration:underline;text-underline-offset:4px}
 .ei-card p{font-size:15px;line-height:1.85;margin:8px 0;overflow-wrap:anywhere}
 .ei-card .ei-tag{font-size:12px;font-weight:800;color:var(--blue);margin:0}
 .ei-card .ei-open{display:inline-flex;align-items:center;min-height:44px;font-size:14px;font-weight:800;color:var(--blue);margin-top:auto;padding-top:14px}
