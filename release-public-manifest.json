@@ -15238,11 +15238,13 @@
     "release-public-build.mjs": "c34c7399e12971ccb68e66c196f51d169e77dc3e130b93675d4f01270ffd1d66",
     "wawa-analytics-build.mjs": "094e86ff71fc31675d12dcdf73f5bb9c87efcc4972843188e32092a1507b948d",
     "seo-descriptions.mjs": "23ab1a28da947f9ff3baeea6b032be94a842863d87295324071e1a32c8280fac",
-    "release-public-verify.mjs": "329a6070ff584d57b08cc252858bd71a584447db6e970c7bbb5ac3775418f728",
+    "release-public-verify.mjs": "febe8e5b38152cfa7fcc8cfaa031bd51a3fd455ee1075148366f692b29c8df3f",
     "seo-descriptions.json": "5a95d9e34621e98805b072bd7f782a3424d739244de3a1a39290c3096d7b7bc4",
-    "vercel.json": "66b723269fb81fbe0cafe84a40456362ed8276dfbc8fe6618942205246b2ce26"
+    "vercel.json": "62e2565eac8a89a8b87164bd8a30398c0fc4d6f86ea92ce4dddc4d6f91b99da4",
+    "image-order-build.mjs": "5df37edccdf9c937edc97d37986d0fc3af9a5c39c3e148169ea1916a25c95cef",
+    "image-order-review.json": "d803b43b87d00c6483a6127768574285f2265d6218f90f81ef93bc3000e80372"
   },
-  "reviewedVercelConfigSha256": "729730d1f76e587e2e771f9f8f7849d460b2a11b1c435d522f8e76d59f987789",
+  "reviewedVercelConfigSha256": "202d86f11a64836fb31121350667ab4ddf0af0d8205288ec14ed6faff37de6f9",
   "previousReviewedUpdate": {
     "date": "2026-10-05",
     "scope": "Homepage content navigation, 12 grade shortcuts and 8 contextual article previews; semantic metadata",

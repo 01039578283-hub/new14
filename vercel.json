@@ -29,6 +29,6 @@
       ]
     }
   ],
-  "buildCommand": "node release-public-build.mjs && node wawa-analytics-build.mjs wawa-15 .public-release && node seo-descriptions.mjs --root=.public-release && node release-public-verify.mjs",
+  "buildCommand": "node release-public-build.mjs && node wawa-analytics-build.mjs wawa-15 .public-release && node seo-descriptions.mjs --root=.public-release && node image-order-build.mjs && node release-public-verify.mjs",
   "outputDirectory": ".public-release"
 }
