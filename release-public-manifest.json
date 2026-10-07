@@ -20052,7 +20052,13 @@
       "지점안내/충북/칠금점/봉방동영수학원/index.html",
       "지점안내/충북/칠금점/칠금동국영수학원/index.html",
       "지점안내/충북/칠금점/칠금동영수학원/index.html"
-    ]
+    ],
+    "routingRepair": {
+      "date": "2026-10-07",
+      "historicalURL": "/과목별학원/고등수학학원/전주혁신도",
+      "destination": "/과목별학원/고등수학학원/전주혁신도시/",
+      "reason": "Naver diagnosis recorded a truncated neighborhood path; current chain 308 then 404. Preserve existing canonical page and recover only this exact legacy path with and without trailing slash."
+    }
   },
   "reviewedBuildInputs": {
     "release-public-build.mjs": "c34c7399e12971ccb68e66c196f51d169e77dc3e130b93675d4f01270ffd1d66",
@@ -20060,13 +20066,13 @@
     "seo-descriptions.mjs": "23ab1a28da947f9ff3baeea6b032be94a842863d87295324071e1a32c8280fac",
     "release-public-verify.mjs": "ca8ec557149f6599f98803b89d3f1884893c86a610421a33b8d8086492f51c0c",
     "seo-descriptions.json": "5581c463f8093136e5f98f7db2359b35c4101e0d3877e4c804a4118741eb7059",
-    "vercel.json": "52650e72a7a381c17f09abb26008ab3432302c27648ff1b4afcca1a539af3eb2",
+    "vercel.json": "46fefbd006ca29cbece498882a01fde644c675bb7fa188c0c9d3ffc9c5af4511",
     "image-order-build.mjs": "363d065d92189ad97b9d836d1e4d51c33d89237e080ce727dba7ff39c2addf3e",
     "image-order-review.json": "a8abaacc239cfea21fd8c9e512c1fd6d50d5ad99cffb0ebcbb30552e24a9671d",
     "crawler-content-build.mjs": "760af2045109db9579ea8db8d940ae7c11d843b4d7beda71c5d1e4cd5f3cd0ed",
     "crawler-content-review.json": "8bbc562720a708cddc36b6643df6e5d40e5d07efb7daf30c15fe88cb6a48622d"
   },
-  "reviewedVercelConfigSha256": "c800e88dcf1d4f1b16087d0f65be1e1e67aa4f1d3a684abf4a54104931e25c3e",
+  "reviewedVercelConfigSha256": "61b14c49f3af39f9f0b138461483293cd3acd70d4cd5511c22eaf62f1854ce8a",
   "previousReviewedUpdate": {
     "date": "2026-10-06",
     "scope": "30 additional distinct education manuscripts, 90 photos and contextual existing-page links; preserve previous routes and content; full title click targets on all hub cards",
