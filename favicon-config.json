@@ -1,0 +1,9 @@
+{
+  "domain": "국영수학원.com",
+  "outputDirectory": ".public-release",
+  "previousBuildCommand": "node release-public-build.mjs && node wawa-analytics-build.mjs wawa-15 .public-release && node seo-descriptions.mjs --root=.public-release && node image-order-build.mjs && node crawler-content-build.mjs && node release-public-verify.mjs",
+  "assets": {
+    "assets/site-favicon.png": "473837c50026336b3ae990688ac7cd13701cbe140dc9f67a4da7010d2522a7d5",
+    "assets/site-apple-touch-icon.png": "90877b9dc7c5a7e0e61691b1c2812f9e4454e0315caaeb87ee67a4ba41e1fa3e"
+  }
+}

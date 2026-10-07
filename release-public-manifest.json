@@ -3,6 +3,8 @@
   "createdAt": "2026-09-25T09:39:26.106087+09:00",
   "sitemapPages": 5093,
   "files": {
+    "assets/site-favicon.png": "473837c50026336b3ae990688ac7cd13701cbe140dc9f67a4da7010d2522a7d5",
+    "assets/site-apple-touch-icon.png": "90877b9dc7c5a7e0e61691b1c2812f9e4454e0315caaeb87ee67a4ba41e1fa3e",
     "404.html": "060f5176e9eb9f0f4cc12fda0665554de6bdefd1b44fa28e2f514436ac26feee",
     "assets/centers/common/local6839.webp": "b8f10c493c1986db0ee23ca76ff3d3b97eacdd84e2e04e28a6433f386010d37d",
     "assets/centers/common/seoul6839.webp": "34d4703f529e6700fdda82774b009017198f27a6609e0a63a15be9b52c1ec0fe",
@@ -20066,13 +20068,13 @@
     "seo-descriptions.mjs": "23ab1a28da947f9ff3baeea6b032be94a842863d87295324071e1a32c8280fac",
     "release-public-verify.mjs": "ca8ec557149f6599f98803b89d3f1884893c86a610421a33b8d8086492f51c0c",
     "seo-descriptions.json": "5581c463f8093136e5f98f7db2359b35c4101e0d3877e4c804a4118741eb7059",
-    "vercel.json": "46fefbd006ca29cbece498882a01fde644c675bb7fa188c0c9d3ffc9c5af4511",
+    "vercel.json": "bbf1789086b75494660b85d33a93f9df96b61fe5b8449c5e0c65a5178397a7be",
     "image-order-build.mjs": "363d065d92189ad97b9d836d1e4d51c33d89237e080ce727dba7ff39c2addf3e",
     "image-order-review.json": "a8abaacc239cfea21fd8c9e512c1fd6d50d5ad99cffb0ebcbb30552e24a9671d",
     "crawler-content-build.mjs": "760af2045109db9579ea8db8d940ae7c11d843b4d7beda71c5d1e4cd5f3cd0ed",
     "crawler-content-review.json": "8bbc562720a708cddc36b6643df6e5d40e5d07efb7daf30c15fe88cb6a48622d"
   },
-  "reviewedVercelConfigSha256": "61b14c49f3af39f9f0b138461483293cd3acd70d4cd5511c22eaf62f1854ce8a",
+  "reviewedVercelConfigSha256": "41e04664bbfd3d31446b401cb45f4e42d96002128a0901a5a015745e7653de68",
   "previousReviewedUpdate": {
     "date": "2026-10-06",
     "scope": "30 additional distinct education manuscripts, 90 photos and contextual existing-page links; preserve previous routes and content; full title click targets on all hub cards",
