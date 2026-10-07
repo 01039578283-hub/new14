@@ -4,8 +4,9 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {mediaContext,normalizeMediaHTML} from './image-order-build.mjs';
+import {crawlerContext,enhanceCrawlerHTML} from './crawler-content-build.mjs';
 
-export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json'];
+export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json'];
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const normalize=bytes=>Buffer.from(bytes.toString('utf8').replaceAll('\r\n','\n'));
 const readJSON=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
@@ -53,6 +54,7 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
   const manifest=readJSON(path.join(root,'release-public-manifest.json'));
   const buildInputsChecked=verifyBuildInputs(root,manifest);
   const imageContext=mediaContext(root,manifest);
+  const contentContext=crawlerContext(root);
   const selected=new Set(Object.keys(manifest.files)),actual=[];
   function walk(dir) {
     for(const entry of fs.readdirSync(dir,{withFileTypes:true})) {
@@ -78,6 +80,7 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
         if(!tags.length)expected=Buffer.from(html.replace(/<\/head\s*>/i,m=>tracker+m));
       }
       expected=Buffer.from(normalizeMediaHTML(expected.toString('utf8'),name,imageContext).html);
+      expected=Buffer.from(enhanceCrawlerHTML(expected.toString('utf8'),name,contentContext).html);
       htmlFilesChecked++;
     }
     if(!expected.equals(built))throw Error('Unreviewed final output change: '+name);
