@@ -1,4 +1,4 @@
-/** Pin verified branch photos at their existing lower-body positions. */
+/** Pin reviewed actual or explicitly labelled common photos at lower-body positions. */
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -48,7 +48,7 @@ export function enhanceRepresentativePhotoHTML(source,name,context){
   if(caption)edits.push({start:caption.openEnd,end:caption.closeStart,value:esc(info.caption)});
   edits.push({start:gallery.start,end:gallery.openEnd,value:attr(source.slice(gallery.start,gallery.openEnd),'data-branch-photo-representative','20261009')});
  }else{
-  const heading=esc(info.center+' 사진');
+  const heading=esc(info.heading||info.center+' 사진');
   const block='<section class="site-shell kd-section" data-branch-photo-representative="20261009" aria-label="'+heading+'"><h2 class="branch-photo-heading">'+heading+'</h2><figure><a href="'+esc(info.absolute)+'" target="_blank" rel="noopener" aria-label="'+esc(info.alt+' 크게 보기')+'"><img data-branch-photo-selected="true" src="'+esc(info.absolute)+'" alt="'+esc(info.alt)+'" width="'+info.width+'" height="'+info.height+'" loading="lazy" decoding="async"></a><figcaption>'+esc(info.caption)+'</figcaption></figure></section>';
   edits.push({start:main.closeStart,end:main.closeStart,value:block});
  }
@@ -79,7 +79,12 @@ export function enhanceRepresentativePhotoHTML(source,name,context){
    if(types.includes('LocalBusiness')&&v.address&&v.image!==undefined){
     const old=Array.isArray(v.image)?v.image:[v.image];
     const remaining=old.filter(u=>typeof u==='string'&&!/\/(?:representative\/|rep-)/.test(u)&&u!==info.absolute);
-    v.image=[info.absolute,...remaining];changed=true;
+    // A common example represents the page, not this LocalBusiness's premises.
+    if(info.photoType==='common'){
+     const kept=old.filter(u=>typeof u==='string'&&!/\/(?:representative\/|rep-)/.test(u));
+     if(kept.length){v.image=Array.isArray(v.image)?kept:kept[0];}else{delete v.image;}
+    }else{v.image=[info.absolute,...remaining];}
+    changed=true;
    }
    Object.values(v).forEach(visit);
   }
@@ -95,6 +100,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   const f=path.join(root,'.public-release',name),source=fs.readFileSync(f,'utf8'),result=enhanceRepresentativePhotoHTML(source,name,context);
   if(result.changed){fs.writeFileSync(f,result.html);changed++;existing+=Number(result.existingBottom);added+=Number(!result.existingBottom);removed+=result.hiddenRemoved;}
  }
- console.log(JSON.stringify({photoPages:changed,existingBottom:existing,newBottom:added,hiddenImagesRemoved:removed,verifiedCenters:Object.keys(context.photos).length,heldPages:context.holds.length}));
+ const commonPages=Object.values(context.pages).filter(p=>p.photoType==='common');
+ console.log(JSON.stringify({photoPages:changed,existingBottom:existing,newBottom:added,hiddenImagesRemoved:removed,verifiedActualCenters:Object.values(context.photos).filter(p=>p.photoType!=='common').length,commonExampleCenters:new Set(commonPages.map(p=>p.center)).size,commonExamplePages:commonPages.length,heldPages:context.holds.length}));
  console.log(JSON.stringify(verifyPublicOutput(root,path.join(root,'.public-release'),{representativePhotos:true,finalFavicon:true})));
 }
