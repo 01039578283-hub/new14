@@ -5,8 +5,9 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {mediaContext,normalizeMediaHTML} from './image-order-build.mjs';
 import {crawlerContext,enhanceCrawlerHTML} from './crawler-content-build.mjs';
+import {representativePhotoContext,enhanceRepresentativePhotoHTML,normalizeFinalFavicon} from './representative-photos-build.mjs';
 
-export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json'];
+export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json','favicon-build.mjs','favicon-config.json','representative-photos-build.mjs','representative-photos-review.json'];
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const normalize=bytes=>Buffer.from(bytes.toString('utf8').replaceAll('\r\n','\n'));
 const readJSON=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
@@ -50,11 +51,12 @@ function pageNodes(value,canonical,result=[]) {
   Object.values(value).forEach(v=>pageNodes(v,canonical,result));return result;
 }
 
-export function verifyPublicOutput(root,output=path.join(root,'.public-release')) {
+export function verifyPublicOutput(root,output=path.join(root,'.public-release'),options={}) {
   const manifest=readJSON(path.join(root,'release-public-manifest.json'));
   const buildInputsChecked=verifyBuildInputs(root,manifest);
   const imageContext=mediaContext(root,manifest);
   const contentContext=crawlerContext(root);
+  const photoContext=options.representativePhotos?representativePhotoContext(root):null;
   const selected=new Set(Object.keys(manifest.files)),actual=[];
   function walk(dir) {
     for(const entry of fs.readdirSync(dir,{withFileTypes:true})) {
@@ -81,6 +83,8 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
       }
       expected=Buffer.from(normalizeMediaHTML(expected.toString('utf8'),name,imageContext).html);
       expected=Buffer.from(enhanceCrawlerHTML(expected.toString('utf8'),name,contentContext).html);
+      if(options.finalFavicon)expected=Buffer.from(normalizeFinalFavicon(expected.toString('utf8')));
+      if(photoContext)expected=Buffer.from(enhanceRepresentativePhotoHTML(expected.toString('utf8'),name,photoContext).html);
       htmlFilesChecked++;
     }
     if(!expected.equals(built))throw Error('Unreviewed final output change: '+name);
@@ -118,5 +122,5 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const root=path.dirname(fileURLToPath(import.meta.url));
-  console.log(JSON.stringify(verifyPublicOutput(root)));
+  console.log(JSON.stringify(verifyPublicOutput(root,path.join(root,'.public-release'),process.argv.includes('--final')?{representativePhotos:true,finalFavicon:true}:{})));
 }

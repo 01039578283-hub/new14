@@ -52,6 +52,6 @@
       ]
     }
   ],
-  "buildCommand": "node favicon-build.mjs",
+  "buildCommand": "node representative-photos-build.mjs",
   "outputDirectory": ".public-release"
 }
