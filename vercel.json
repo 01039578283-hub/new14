@@ -52,6 +52,6 @@
       ]
     }
   ],
-  "buildCommand": "node representative-photos-build.mjs",
+  "buildCommand": "node content-quality-build.mjs",
   "outputDirectory": ".public-release"
 }

@@ -6,8 +6,9 @@ import {fileURLToPath} from 'node:url';
 import {mediaContext,normalizeMediaHTML} from './image-order-build.mjs';
 import {crawlerContext,enhanceCrawlerHTML} from './crawler-content-build.mjs';
 import {representativePhotoContext,enhanceRepresentativePhotoHTML,normalizeFinalFavicon} from './representative-photos-build.mjs';
+import {contentQualityContext,enhanceContentQualityHTML,enhanceContentQualitySitemap} from './content-quality-build.mjs';
 
-export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json','favicon-build.mjs','favicon-config.json','representative-photos-build.mjs','representative-photos-review.json'];
+export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json','favicon-build.mjs','favicon-config.json','representative-photos-build.mjs','representative-photos-review.json','content-quality-build.mjs','content-quality-review.json'];
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const normalize=bytes=>Buffer.from(bytes.toString('utf8').replaceAll('\r\n','\n'));
 const readJSON=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
@@ -57,6 +58,7 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
   const imageContext=mediaContext(root,manifest);
   const contentContext=crawlerContext(root);
   const photoContext=options.representativePhotos?representativePhotoContext(root):null;
+  const qualityContext=options.contentQuality?contentQualityContext(root):null;
   const selected=new Set(Object.keys(manifest.files)),actual=[];
   function walk(dir) {
     for(const entry of fs.readdirSync(dir,{withFileTypes:true})) {
@@ -85,8 +87,10 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
       expected=Buffer.from(enhanceCrawlerHTML(expected.toString('utf8'),name,contentContext).html);
       if(options.finalFavicon)expected=Buffer.from(normalizeFinalFavicon(expected.toString('utf8')));
       if(photoContext)expected=Buffer.from(enhanceRepresentativePhotoHTML(expected.toString('utf8'),name,photoContext).html);
+      if(qualityContext)expected=Buffer.from(enhanceContentQualityHTML(expected.toString('utf8'),name,qualityContext).html);
       htmlFilesChecked++;
     }
+    if(name==='sitemap.xml'&&qualityContext)expected=Buffer.from(enhanceContentQualitySitemap(expected.toString('utf8'),qualityContext));
     if(!expected.equals(built))throw Error('Unreviewed final output change: '+name);
   }
   const config=readJSON(path.join(root,'seo-descriptions.json'));
@@ -122,5 +126,5 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const root=path.dirname(fileURLToPath(import.meta.url));
-  console.log(JSON.stringify(verifyPublicOutput(root,path.join(root,'.public-release'),process.argv.includes('--final')?{representativePhotos:true,finalFavicon:true}:{})));
+  console.log(JSON.stringify(verifyPublicOutput(root,path.join(root,'.public-release'),process.argv.includes('--final')?{representativePhotos:true,finalFavicon:true,contentQuality:true}:{})));
 }

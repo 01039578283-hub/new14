@@ -10209,7 +10209,8 @@
     "assets/readable-media/reader-77be283fa0ce7445.js": "77be283fa0ce7445b7c5c05bf4f4d1a6faef27b652b6c19c675260a0daef35fe",
     "assets/centers/verified-photos/ba30761238ffe2486820afe5.jpg": "ba30761238ffe2486820afe5ecddf1492e8f6202b05b4d8b1a19fed4c2f72a47",
     "assets/centers/verified-photos/fd6385f6ce77bf0863abf981.jpg": "fd6385f6ce77bf0863abf981fd965adc9bc0439e3d2600b5ab543474d339dec0",
-    "assets/centers/verified-photos/1b58bca23819e4c0a1ae9f13.jpg": "1b58bca23819e4c0a1ae9f13385adaa1140673d1add41d16b60d179d12ca6358"
+    "assets/centers/verified-photos/1b58bca23819e4c0a1ae9f13.jpg": "1b58bca23819e4c0a1ae9f13385adaa1140673d1add41d16b60d179d12ca6358",
+    "assets/content-review-20261014.css": "7298970a678dc07da4ddd09da217beb3915d8b7a4e4fb41f59136d900daf8980"
   },
   "textSha256": {
     "404.html": "03c6b0e239615bf5d52a8398c8bada7a4ae933f1f164b46bce68b61ef9047f15",
@@ -15387,7 +15388,8 @@
     "교육정보/방학공부-미루기-합의/index.html": "ae911674c6be2cb181c7b32d453324960b48653299bc12123fa1036b1f0d0b94",
     "교육정보/개학초반-어려움-점검/index.html": "81c690947102f9c9f65f762ec973b995469cb7e74d4ec5908d2b9009454642e7",
     "assets/readable-media/reader-51965b5692f8d829.css": "51965b5692f8d829e1aca373fb960e93075f3ca272ca845c5f4688601ab75fca",
-    "assets/readable-media/reader-77be283fa0ce7445.js": "77be283fa0ce7445b7c5c05bf4f4d1a6faef27b652b6c19c675260a0daef35fe"
+    "assets/readable-media/reader-77be283fa0ce7445.js": "77be283fa0ce7445b7c5c05bf4f4d1a6faef27b652b6c19c675260a0daef35fe",
+    "assets/content-review-20261014.css": "7298970a678dc07da4ddd09da217beb3915d8b7a4e4fb41f59136d900daf8980"
   },
   "reviewedUpdate": {
     "date": "2026-10-10",
@@ -17059,9 +17061,9 @@
     "release-public-build.mjs": "c34c7399e12971ccb68e66c196f51d169e77dc3e130b93675d4f01270ffd1d66",
     "wawa-analytics-build.mjs": "094e86ff71fc31675d12dcdf73f5bb9c87efcc4972843188e32092a1507b948d",
     "seo-descriptions.mjs": "23ab1a28da947f9ff3baeea6b032be94a842863d87295324071e1a32c8280fac",
-    "release-public-verify.mjs": "2d3a688af84c3485b24a6b7a5207f6ade7785e7bb9e4a2ba7ad302e78ce7eae6",
+    "release-public-verify.mjs": "baa4a5d85db269fba4edb913fb43b320f0a7fd4cefa90d2a86f15f11dd0fdf34",
     "seo-descriptions.json": "5581c463f8093136e5f98f7db2359b35c4101e0d3877e4c804a4118741eb7059",
-    "vercel.json": "d39fc227066bdc07654f67d1ebad10fcb3841ed000a028ad4e37632b01ad3307",
+    "vercel.json": "4fe855377c605af408b3eeef09480be8aad6ae7e5fffd4e298a5e8e93343aff5",
     "image-order-build.mjs": "363d065d92189ad97b9d836d1e4d51c33d89237e080ce727dba7ff39c2addf3e",
     "image-order-review.json": "a8abaacc239cfea21fd8c9e512c1fd6d50d5ad99cffb0ebcbb30552e24a9671d",
     "crawler-content-build.mjs": "760af2045109db9579ea8db8d940ae7c11d843b4d7beda71c5d1e4cd5f3cd0ed",
@@ -17069,9 +17071,11 @@
     "favicon-build.mjs": "85e3b81368034aba8cd5cbcce0f120addc0169a9406f77ae13efa671f4821e76",
     "favicon-config.json": "a35f4b0f4a35ee383387c9c9307d81704636f4d5768bac2ee683dc88cf04375b",
     "representative-photos-build.mjs": "81264ea3d34f149c175331bacfa11f8182dd12e2f7a86701e6d696f9474f60b0",
-    "representative-photos-review.json": "29c31e44ce24c9d9b355a1b61602e3b6cc8a014f238683a15f0c5b7446e9b609"
+    "representative-photos-review.json": "29c31e44ce24c9d9b355a1b61602e3b6cc8a014f238683a15f0c5b7446e9b609",
+    "content-quality-build.mjs": "67dfc8c60d21cb9c8991ec50455881825c2351abffb4990ff20000162c39713c",
+    "content-quality-review.json": "4239cd094fe1d69db72d6037d60b2e929ecd71487841dc344c60b4614b8dd293"
   },
-  "reviewedVercelConfigSha256": "b9457607b17415fc349f53041e83e7e003af36475ba3a22ec952c2ddf7537ca8",
+  "reviewedVercelConfigSha256": "94d4a0f02ee004256272bcaf9e733920f23155f85266519411592d5d9e04c50b",
   "previousReviewedUpdate": {
     "date": "2026-10-09",
     "scope": "Verified branch photos remain in existing lower galleries or are appended at end of main. Pin matching og/twitter/page images; remove only confirmed hidden representatives; hold unmatched branches untouched. Preserve content, paths, maps, remaining photos, favicon and hubs.",
@@ -19411,5 +19415,11 @@
       "지점안내/충북/칠금점/칠금동영수학원/index.html"
     ],
     "heldPages": 2317
+  },
+  "reviewedContentUpdate": {
+    "date": "2026-10-14",
+    "scope": "Add practical consultation and learning records; consolidate exact repeated paragraphs and repeated same-destination curriculum links; preserve all existing URLs, page metadata identities, original manuscripts and image positions.",
+    "review": "content-quality-review.json",
+    "transformedPages": 4918
   }
 }
