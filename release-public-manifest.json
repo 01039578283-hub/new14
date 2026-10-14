@@ -17063,7 +17063,7 @@
     "seo-descriptions.mjs": "23ab1a28da947f9ff3baeea6b032be94a842863d87295324071e1a32c8280fac",
     "release-public-verify.mjs": "baa4a5d85db269fba4edb913fb43b320f0a7fd4cefa90d2a86f15f11dd0fdf34",
     "seo-descriptions.json": "5581c463f8093136e5f98f7db2359b35c4101e0d3877e4c804a4118741eb7059",
-    "vercel.json": "4fe855377c605af408b3eeef09480be8aad6ae7e5fffd4e298a5e8e93343aff5",
+    "vercel.json": "0aa4e6c0d6a6a1cd8f5d90d5d5d4329f8946724ed46878c81c2848a6e0a8262c",
     "image-order-build.mjs": "363d065d92189ad97b9d836d1e4d51c33d89237e080ce727dba7ff39c2addf3e",
     "image-order-review.json": "a8abaacc239cfea21fd8c9e512c1fd6d50d5ad99cffb0ebcbb30552e24a9671d",
     "crawler-content-build.mjs": "760af2045109db9579ea8db8d940ae7c11d843b4d7beda71c5d1e4cd5f3cd0ed",
@@ -17075,7 +17075,7 @@
     "content-quality-build.mjs": "67dfc8c60d21cb9c8991ec50455881825c2351abffb4990ff20000162c39713c",
     "content-quality-review.json": "4239cd094fe1d69db72d6037d60b2e929ecd71487841dc344c60b4614b8dd293"
   },
-  "reviewedVercelConfigSha256": "94d4a0f02ee004256272bcaf9e733920f23155f85266519411592d5d9e04c50b",
+  "reviewedVercelConfigSha256": "1722aff5a6d2373b3e8cff1d62a8b83b78bde1bb3bc4b634f14c44417a9887a1",
   "previousReviewedUpdate": {
     "date": "2026-10-09",
     "scope": "Verified branch photos remain in existing lower galleries or are appended at end of main. Pin matching og/twitter/page images; remove only confirmed hidden representatives; hold unmatched branches untouched. Preserve content, paths, maps, remaining photos, favicon and hubs.",
