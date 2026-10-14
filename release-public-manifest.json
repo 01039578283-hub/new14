@@ -17061,7 +17061,7 @@
     "release-public-build.mjs": "c34c7399e12971ccb68e66c196f51d169e77dc3e130b93675d4f01270ffd1d66",
     "wawa-analytics-build.mjs": "094e86ff71fc31675d12dcdf73f5bb9c87efcc4972843188e32092a1507b948d",
     "seo-descriptions.mjs": "23ab1a28da947f9ff3baeea6b032be94a842863d87295324071e1a32c8280fac",
-    "release-public-verify.mjs": "baa4a5d85db269fba4edb913fb43b320f0a7fd4cefa90d2a86f15f11dd0fdf34",
+    "release-public-verify.mjs": "a9a7ff4b96a41f70c2597e0b63d316622622b6d159f02e4e84a80de9f4988f82",
     "seo-descriptions.json": "5581c463f8093136e5f98f7db2359b35c4101e0d3877e4c804a4118741eb7059",
     "vercel.json": "0aa4e6c0d6a6a1cd8f5d90d5d5d4329f8946724ed46878c81c2848a6e0a8262c",
     "image-order-build.mjs": "363d065d92189ad97b9d836d1e4d51c33d89237e080ce727dba7ff39c2addf3e",
@@ -17073,7 +17073,8 @@
     "representative-photos-build.mjs": "81264ea3d34f149c175331bacfa11f8182dd12e2f7a86701e6d696f9474f60b0",
     "representative-photos-review.json": "29c31e44ce24c9d9b355a1b61602e3b6cc8a014f238683a15f0c5b7446e9b609",
     "content-quality-build.mjs": "67dfc8c60d21cb9c8991ec50455881825c2351abffb4990ff20000162c39713c",
-    "content-quality-review.json": "4239cd094fe1d69db72d6037d60b2e929ecd71487841dc344c60b4614b8dd293"
+    "content-quality-review.json": "4239cd094fe1d69db72d6037d60b2e929ecd71487841dc344c60b4614b8dd293",
+    "release-inputs.mjs": "80ac92591d1dbd6a1cb656ac49dbd085a6b967de2a494306822c100499935ad0"
   },
   "reviewedVercelConfigSha256": "1722aff5a6d2373b3e8cff1d62a8b83b78bde1bb3bc4b634f14c44417a9887a1",
   "previousReviewedUpdate": {

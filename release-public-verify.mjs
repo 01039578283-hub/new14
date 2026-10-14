@@ -1,35 +1,20 @@
 /** Verify reviewed build inputs and the exact public result after all HTML passes. */
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {mediaContext,normalizeMediaHTML} from './image-order-build.mjs';
 import {crawlerContext,enhanceCrawlerHTML} from './crawler-content-build.mjs';
 import {representativePhotoContext,enhanceRepresentativePhotoHTML,normalizeFinalFavicon} from './representative-photos-build.mjs';
 import {contentQualityContext,enhanceContentQualityHTML,enhanceContentQualitySitemap} from './content-quality-build.mjs';
+import {BUILD_INPUTS,verifyReviewedInputs} from './release-inputs.mjs';
+export {BUILD_INPUTS,configDigest} from './release-inputs.mjs';
 
-export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json','favicon-build.mjs','favicon-config.json','representative-photos-build.mjs','representative-photos-review.json','content-quality-build.mjs','content-quality-review.json'];
-const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
-const normalize=bytes=>Buffer.from(bytes.toString('utf8').replaceAll('\r\n','\n'));
 const readJSON=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
-// Deployment providers may reserialize JSON. Preserve every config value and
-// array order while ignoring only whitespace and object-key ordering.
-const orderedJSON=value=>Array.isArray(value)?value.map(orderedJSON):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,orderedJSON(value[key])])):value;
-export const configDigest=bytes=>digest(Buffer.from(JSON.stringify(orderedJSON(JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/,''))))));
 const siteOrigin='https://xn--3e0bz50b1zcyxat54c.com';
 const tracker='<script defer src="https://wawa-visit-collector.clean-peach-8202.chatgpt.site/tracker.js" data-site="wawa-15" crossorigin="anonymous" referrerpolicy="no-referrer"></script>';
 
 export function verifyBuildInputs(root,manifest=readJSON(path.join(root,'release-public-manifest.json'))) {
-  const reviewed=manifest.reviewedBuildInputs;
-  if(!reviewed||Object.keys(reviewed).sort().join('\n')!==[...BUILD_INPUTS].sort().join('\n'))throw Error('Reviewed build inputs are missing or incomplete; regenerate and review the release manifest');
-  for(const name of BUILD_INPUTS) {
-    const bytes=fs.readFileSync(path.join(root,name));
-    if(!Buffer.from(bytes.toString('utf8')).equals(bytes))throw Error('Non-UTF8 reviewed build input: '+name);
-    if(digest(normalize(bytes))===reviewed[name])continue;
-    if(name==='vercel.json'&&manifest.reviewedVercelConfigSha256&&configDigest(bytes)===manifest.reviewedVercelConfigSha256)continue;
-    throw Error('Reviewed build input changed: '+name);
-  }
-  return BUILD_INPUTS.length;
+  return verifyReviewedInputs(name=>fs.readFileSync(path.join(root,name)),manifest);
 }
 
 const decode=s=>s.replace(/&(?:amp|quot|apos|lt|gt|#39|#x[\da-f]+|#\d+);/gi,v=>{

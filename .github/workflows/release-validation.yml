@@ -1,0 +1,29 @@
+name: Release validation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Regression tests for deployment guards
+        run: node --test tests/release-preflight.test.mjs
+      - name: Check committed build inputs
+        run: node release-preflight.mjs --ref HEAD
+      - name: Run the production build and complete public verification
+        run: node content-quality-build.mjs
