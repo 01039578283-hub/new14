@@ -1,7 +1,7 @@
 /** One fail-closed input contract shared by the build and pre-push checks. */
 import {createHash} from 'node:crypto';
 
-export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json','favicon-build.mjs','favicon-config.json','representative-photos-build.mjs','representative-photos-review.json','content-quality-build.mjs','content-quality-review.json','release-inputs.mjs'];
+export const BUILD_INPUTS=['release-public-build.mjs','wawa-analytics-build.mjs','seo-descriptions.mjs','release-public-verify.mjs','seo-descriptions.json','vercel.json','image-order-build.mjs','image-order-review.json','crawler-content-build.mjs','crawler-content-review.json','favicon-build.mjs','favicon-config.json','representative-photos-build.mjs','representative-photos-review.json','content-quality-build.mjs','content-quality-review.json','release-inputs.mjs','kakao-directions-build.mjs','kakao-directions-review.json'];
 export const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 export function utf8(bytes,name='input') {
   const text=bytes.toString('utf8');

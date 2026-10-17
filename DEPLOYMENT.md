@@ -20,8 +20,8 @@ node tools/release/install-pre-push.mjs
 ```sh
 node release-preflight.mjs --review-input vercel.json
 node release-preflight.mjs
-node --test tests/release-preflight.test.mjs
-node content-quality-build.mjs
+node --test tests/release-preflight.test.mjs tests/kakao-directions.test.mjs
+node kakao-directions-build.mjs
 ```
 
 3. 변경 파일과 `release-public-manifest.json`을 함께 커밋합니다. 기존 URL·본문·이미지에 의도하지 않은 변경이 없는지도 검토합니다.

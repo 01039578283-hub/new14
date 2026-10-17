@@ -6,6 +6,7 @@ import {mediaContext,normalizeMediaHTML} from './image-order-build.mjs';
 import {crawlerContext,enhanceCrawlerHTML} from './crawler-content-build.mjs';
 import {representativePhotoContext,enhanceRepresentativePhotoHTML,normalizeFinalFavicon} from './representative-photos-build.mjs';
 import {contentQualityContext,enhanceContentQualityHTML,enhanceContentQualitySitemap} from './content-quality-build.mjs';
+import {kakaoDirectionsContext,enhanceKakaoDirectionsHTML,enhanceKakaoDirectionsSitemap} from './kakao-directions-build.mjs';
 import {BUILD_INPUTS,verifyReviewedInputs} from './release-inputs.mjs';
 export {BUILD_INPUTS,configDigest} from './release-inputs.mjs';
 
@@ -44,6 +45,7 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
   const contentContext=crawlerContext(root);
   const photoContext=options.representativePhotos?representativePhotoContext(root):null;
   const qualityContext=options.contentQuality?contentQualityContext(root):null;
+  const directionsContext=options.kakaoDirections?kakaoDirectionsContext(root):null;
   const selected=new Set(Object.keys(manifest.files)),actual=[];
   function walk(dir) {
     for(const entry of fs.readdirSync(dir,{withFileTypes:true})) {
@@ -73,9 +75,11 @@ export function verifyPublicOutput(root,output=path.join(root,'.public-release')
       if(options.finalFavicon)expected=Buffer.from(normalizeFinalFavicon(expected.toString('utf8')));
       if(photoContext)expected=Buffer.from(enhanceRepresentativePhotoHTML(expected.toString('utf8'),name,photoContext).html);
       if(qualityContext)expected=Buffer.from(enhanceContentQualityHTML(expected.toString('utf8'),name,qualityContext).html);
+      if(directionsContext)expected=Buffer.from(enhanceKakaoDirectionsHTML(expected.toString('utf8'),name,directionsContext).html);
       htmlFilesChecked++;
     }
     if(name==='sitemap.xml'&&qualityContext)expected=Buffer.from(enhanceContentQualitySitemap(expected.toString('utf8'),qualityContext));
+    if(name==='sitemap.xml'&&directionsContext)expected=Buffer.from(enhanceKakaoDirectionsSitemap(expected.toString('utf8'),directionsContext));
     if(!expected.equals(built))throw Error('Unreviewed final output change: '+name);
   }
   const config=readJSON(path.join(root,'seo-descriptions.json'));

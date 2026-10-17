@@ -132,6 +132,6 @@
       ]
     }
   ],
-  "buildCommand": "node content-quality-build.mjs",
+  "buildCommand": "node kakao-directions-build.mjs",
   "outputDirectory": ".public-release"
 }

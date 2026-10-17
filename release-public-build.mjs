@@ -15,7 +15,7 @@ function reviewedBytes(bytes,hash,name) {
   if(digest(bytes)===hash)return true;
   // Git converts working-tree CRLF to LF on Linux. Accept only that reversible
   // text-file representation change; binary assets still require exact bytes.
-  if(!/\.(?:html|css|js|json|xml|txt|svg|webmanifest)$/i.test(name))return false;
+  if(!/\.(?:html?|css|js|json|xml|txt|svg|webmanifest)$/i.test(name))return false;
   const lf=bytes.toString('utf8').replaceAll('\r\n','\n');
   if(manifest.textSha256?.[name] && digest(Buffer.from(lf))===manifest.textSha256[name])return true;
   return digest(Buffer.from(lf))===hash||digest(Buffer.from(lf.replaceAll('\n','\r\n')))===hash;
